@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using System.Windows.Forms;
 using GKCommon;
 
@@ -35,36 +36,39 @@ namespace GKCore.Options
 
         public MRUFile(string fileName)
         {
-            this.FileName = fileName;
+            FileName = fileName;
         }
 
-        public void Load(IniFile iniFile, string section)
+        public void LoadFromFile(IniFile iniFile, string section)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
-            this.FileName = iniFile.ReadString(section, "FileName", "");
-            this.WinRect.Left = iniFile.ReadInteger(section, "WinL", 10);
-            this.WinRect.Top = iniFile.ReadInteger(section, "WinT", 10);
-            this.WinRect.Right = iniFile.ReadInteger(section, "WinR", 778);
-            this.WinRect.Bottom = iniFile.ReadInteger(section, "WinB", 312);
-            this.WinState = (FormWindowState)((uint)iniFile.ReadInteger(section, "WinState", 0));
+            FileName = iniFile.ReadString(section, "FileName", "");
+            WinRect.Left = iniFile.ReadInteger(section, "WinL", 10);
+            WinRect.Top = iniFile.ReadInteger(section, "WinT", 10);
+            WinRect.Right = iniFile.ReadInteger(section, "WinR", 778);
+            WinRect.Bottom = iniFile.ReadInteger(section, "WinB", 312);
+            WinState = (FormWindowState)((uint)iniFile.ReadInteger(section, "WinState", 0));
         }
 
-        public void Save(IniFile iniFile, string section)
+        public void SaveToFile(IniFile iniFile, string section)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
-            iniFile.WriteString(section, "FileName", this.FileName);
-            iniFile.WriteInteger(section, "WinL", this.WinRect.Left);
-            iniFile.WriteInteger(section, "WinT", this.WinRect.Top);
-            iniFile.WriteInteger(section, "WinR", this.WinRect.Right);
-            iniFile.WriteInteger(section, "WinB", this.WinRect.Bottom);
-            iniFile.WriteInteger(section, "WinState", (int)this.WinState);
+            iniFile.WriteString(section, "FileName", FileName);
+            iniFile.WriteInteger(section, "WinL", WinRect.Left);
+            iniFile.WriteInteger(section, "WinT", WinRect.Top);
+            iniFile.WriteInteger(section, "WinR", WinRect.Right);
+            iniFile.WriteInteger(section, "WinB", WinRect.Bottom);
+            iniFile.WriteInteger(section, "WinState", (int)WinState);
         }
 
         public static void DeleteKeys(IniFile iniFile, string section)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
             iniFile.DeleteKey(section, "FileName");
             iniFile.DeleteKey(section, "WinL");

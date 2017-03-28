@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -37,141 +37,176 @@ namespace GKImageViewerPlugin
     public partial class ImageViewerWin : Form, ILocalization
     {
         private ImageView fImageCtl;
-        private readonly ILangMan fLangMan;
+        private readonly Plugin fPlugin;
 
-        public ImageViewerWin(IPlugin plugin)
+        public ImageViewerWin(Plugin plugin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
             GKResourceManager resMgr = new GKResourceManager("IVPResource", typeof(ImageViewerWin).Assembly);
-            Bitmap iLoad = (Bitmap)resMgr.GetObjectEx("iLoad");
+            tbFileLoad.Image = (Bitmap)resMgr.GetObjectEx("iLoad");
 
-            this.tbFileLoad.Image = /*IVPResource.*/iLoad;
-            
-            this.fLangMan = plugin.LangMan;
+            fPlugin = plugin;
 
-            this.SetLang();
+            SetLang();
+        }
+
+        private void ImageViewerWin_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            fPlugin.fForm = null;
         }
 
         private void ImageViewerWin_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
             {
-                base.Close();
+                Close();
             }
         }
 
         private void ToolBar1_ButtonClick(object sender, EventArgs e)
         {
-            if (sender == this.tbFileLoad) {
-                string fileName = UIHelper.GetOpenFile("", "", this.fLangMan.LS(IVLS.LSID_FilesFilter), 1, "");
+            if (sender == tbFileLoad) {
+                string fileName = UIHelper.GetOpenFile("", "", fPlugin.LangMan.LS(IVLS.LSID_FilesFilter), 1, "");
                 if (!string.IsNullOrEmpty(fileName))
                 {
-                    this.SetFileRef(fileName);
+                    SetFileRef(fileName);
                 }
             }
         }
 
         private void SetFileRef(string fileName)
         {
-            this.SuspendLayout();
-
-            this.Text = fileName;
+            Text = fileName;
             Control ctl = null;
-            this.fImageCtl = null;
+            fImageCtl = null;
 
             GEDCOMMultimediaFormat fmt = GEDCOMFileReference.RecognizeFormat(fileName);
-            
-            switch (fmt)
+
+            try
             {
-                case GEDCOMMultimediaFormat.mfBMP:
-                case GEDCOMMultimediaFormat.mfGIF:
-                case GEDCOMMultimediaFormat.mfJPG:
-                case GEDCOMMultimediaFormat.mfPCX:
-                case GEDCOMMultimediaFormat.mfTIF:
-                case GEDCOMMultimediaFormat.mfTGA:
-                case GEDCOMMultimediaFormat.mfPNG:
-                    {
-                        using (Stream fs = new FileStream(fileName, FileMode.Open))
+                switch (fmt)
+                {
+                    case GEDCOMMultimediaFormat.mfBMP:
+                    case GEDCOMMultimediaFormat.mfGIF:
+                    case GEDCOMMultimediaFormat.mfJPG:
+                    case GEDCOMMultimediaFormat.mfPCX:
+                    case GEDCOMMultimediaFormat.mfTIF:
+                    case GEDCOMMultimediaFormat.mfTGA:
+                    case GEDCOMMultimediaFormat.mfPNG:
                         {
-                            this.fImageCtl = new ImageView();
-                            this.fImageCtl.OpenImage(new Bitmap(fs));
-                            ctl = this.fImageCtl;
-                        }
-                        break;
-                    }
+                            fImageCtl = new ImageView();
 
-                case GEDCOMMultimediaFormat.mfWAV:
-                case GEDCOMMultimediaFormat.mfAVI:
-                case GEDCOMMultimediaFormat.mfMPG:
-                    break;
-
-                case GEDCOMMultimediaFormat.mfTXT:
-                    {
-                        using (Stream fs = new FileStream(fileName, FileMode.Open))
-                        {
-                            using (StreamReader strd = new StreamReader(fs, Encoding.GetEncoding(1251)))
-                            {
-                                TextBox txtBox = new TextBox();
-                                txtBox.Multiline = true;
-                                txtBox.ReadOnly = true;
-                                txtBox.ScrollBars = ScrollBars.Both;
-                                txtBox.Text = strd.ReadToEnd();
-                                ctl = txtBox;
+                            try {
+                                using (Stream fs = new FileStream(fileName, FileMode.Open))
+                                {
+                                    fImageCtl.OpenImage(new Bitmap(fs));
+                                }
+                            } catch (Exception ex) {
+                                fPlugin.Host.LogWrite("ImageViewerWin.SetFileRef.0(): " + ex.Message);
                             }
+
+                            ctl = fImageCtl;
                         }
                         break;
-                    }
 
-                case GEDCOMMultimediaFormat.mfRTF:
-                    {
-                        using (Stream fs = new FileStream(fileName, FileMode.Open))
+                    case GEDCOMMultimediaFormat.mfWAV:
+                    case GEDCOMMultimediaFormat.mfAVI:
+                    case GEDCOMMultimediaFormat.mfMPG:
+                        break;
+
+                    case GEDCOMMultimediaFormat.mfTXT:
                         {
-                            using (StreamReader strd = new StreamReader(fs))
-                            {
-                                RichTextBox txtBox = new RichTextBox();
-                                txtBox.ReadOnly = true;
-                                txtBox.Text = strd.ReadToEnd();
-                                ctl = txtBox;
+                            TextBox txtBox = new TextBox();
+                            txtBox.Multiline = true;
+                            txtBox.ReadOnly = true;
+                            txtBox.ScrollBars = ScrollBars.Both;
+
+                            try {
+                                using (Stream fs = new FileStream(fileName, FileMode.Open))
+                                {
+                                    using (StreamReader strd = new StreamReader(fs, Encoding.GetEncoding(1251)))
+                                    {
+                                        txtBox.Text = strd.ReadToEnd();
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                fPlugin.Host.LogWrite("ImageViewerWin.SetFileRef.1(): " + ex.Message);
                             }
+
+                            ctl = txtBox;
                         }
                         break;
-                    }
 
-                case GEDCOMMultimediaFormat.mfHTM:
-                    {
-                        using (Stream fs = new FileStream(fileName, FileMode.Open))
+                    case GEDCOMMultimediaFormat.mfRTF:
                         {
-                            ctl = new WebBrowser();
-                            (ctl as WebBrowser).DocumentStream = fs;
+                            RichTextBox rtfBox = new RichTextBox();
+                            rtfBox.ReadOnly = true;
+
+                            try {
+                                using (Stream fs = new FileStream(fileName, FileMode.Open))
+                                {
+                                    using (StreamReader strd = new StreamReader(fs))
+                                    {
+                                        rtfBox.Text = strd.ReadToEnd();
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                fPlugin.Host.LogWrite("ImageViewerWin.SetFileRef.2(): " + ex.Message);
+                            }
+
+                            ctl = rtfBox;
                         }
                         break;
-                    }
-            }
 
-            if (ctl != null) {
-                ctl.Dock = DockStyle.Fill;
-                ctl.Location = new Point(0, 50);
-                ctl.Size = new Size(100, 100);
-                base.Controls.Add(ctl);
-                base.Controls.SetChildIndex(ctl, 0);
-            }
+                    case GEDCOMMultimediaFormat.mfHTM:
+                        {
+                            var browser = new WebBrowser();
+                            try {
+                                using (Stream fs = new FileStream(fileName, FileMode.Open))
+                                {
+                                    browser.DocumentStream = fs;
+                                }
+                            } catch (Exception ex) {
+                                fPlugin.Host.LogWrite("ImageViewerWin.SetFileRef.2(): " + ex.Message);
+                            }
+                            ctl = browser;
+                        }
+                        break;
+                }
 
-            this.ResumeLayout(false);
-            this.PerformLayout();
+                if (ctl != null) {
+                    SuspendLayout();
+
+                    ctl.Dock = DockStyle.Fill;
+                    ctl.Location = new Point(0, 50);
+                    ctl.Size = new Size(100, 100);
+                    Controls.Add(ctl);
+                    Controls.SetChildIndex(ctl, 0);
+
+                    ResumeLayout(false);
+                    PerformLayout();
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ctl != null) ctl.Dispose();
+
+                fPlugin.Host.LogWrite("ImageViewerWin.SetFileRef()" + ex.Message);
+            }
         }
 
         #region ILocalization support
 
         public void SetLang()
         {
-            this.Text = this.fLangMan.LS(IVLS.LSID_ImgViewer);
-            this.tbFileLoad.ToolTipText = this.fLangMan.LS(IVLS.LSID_FileLoad);
+            Text = fPlugin.LangMan.LS(IVLS.LSID_ImgViewer);
+            tbFileLoad.ToolTipText = fPlugin.LangMan.LS(IVLS.LSID_FileLoad);
 
-            /*if (this.fImageCtl != null) {
-                this.fImageCtl.btnSizeToFit.Text = LangMan.LS(LSID.LSID_SizeToFit);
-                this.fImageCtl.btnZoomIn.Text = LangMan.LS(LSID.LSID_ZoomIn);
-                this.fImageCtl.btnZoomOut.Text = LangMan.LS(LSID.LSID_ZoomOut);
+            /*if (fImageCtl != null) {
+                fImageCtl.btnSizeToFit.Text = LangMan.LS(LSID.LSID_SizeToFit);
+                fImageCtl.btnZoomIn.Text = LangMan.LS(LSID.LSID_ZoomIn);
+                fImageCtl.btnZoomOut.Text = LangMan.LS(LSID.LSID_ZoomOut);
             }*/
         }
 

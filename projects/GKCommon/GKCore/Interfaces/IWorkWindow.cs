@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -37,9 +37,9 @@ namespace GKCore.Interfaces
         void NavNext();
         void NavPrev();
 
-        bool AllowQuickFind();
+        bool AllowQuickSearch();
         IList<ISearchResult> FindAll(string searchPattern);
-        void QuickFind();
+        void QuickSearch();
         void SelectByRec(GEDCOMIndividualRecord iRec);
 
         bool AllowFilter();

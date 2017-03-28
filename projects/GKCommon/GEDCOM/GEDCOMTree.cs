@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -41,42 +41,42 @@ namespace GKCommon.GEDCOM
 
             public TreeEnumerator(GEDCOMTree tree, GEDCOMRecordType recType)
             {
-                this.fTree = tree;
-                this.fIndex = -1;
-                this.fEndIndex = tree.RecordsCount - 1;
-                this.fRecType = recType;
+                fTree = tree;
+                fIndex = -1;
+                fEndIndex = tree.RecordsCount - 1;
+                fRecType = recType;
             }
 
             public bool MoveNext(out GEDCOMRecord current)
             {
-                if (this.fRecType == GEDCOMRecordType.rtNone)
+                if (fRecType == GEDCOMRecordType.rtNone)
                 {
-                    if (this.fIndex < this.fEndIndex)
+                    if (fIndex < fEndIndex)
                     {
-                        this.fIndex++;
-                        current = this.fTree[this.fIndex];
+                        fIndex++;
+                        current = fTree[fIndex];
                         return true;
                     }
                 } else {
-                    while (this.fIndex < this.fEndIndex)
+                    while (fIndex < fEndIndex)
                     {
-                        this.fIndex++;
-                        GEDCOMRecord rec = this.fTree[this.fIndex];
-                        if (rec.RecordType == this.fRecType) {
+                        fIndex++;
+                        GEDCOMRecord rec = fTree[fIndex];
+                        if (rec.RecordType == fRecType) {
                             current = rec;
                             return true;
                         }
                     }
                 }
 
-                this.fIndex = this.fEndIndex + 1;
+                fIndex = fEndIndex + 1;
                 current = null;
                 return false;
             }
 
             public void Reset()
             {
-                this.fIndex = -1;
+                fIndex = -1;
             }
         }
 
@@ -93,74 +93,75 @@ namespace GKCommon.GEDCOM
         private ProgressEventHandler fOnProgressEvent;
         private GEDCOMState fState;
         private int fUpdateCount;
+        private GEDCOMFormat fFormat;
 
 
         public string FileName
         {
-            get { return this.fFileName; }
+            get { return fFileName; }
         }
 
         public event ProgressEventHandler OnProgress
         {
             add {
-                this.fOnProgressEvent = value;
+                fOnProgressEvent = value;
             }
             remove {
-                if (this.fOnProgressEvent == value) {
-                    this.fOnProgressEvent = null;
+                if (fOnProgressEvent == value) {
+                    fOnProgressEvent = null;
                 }
             }
         }
 
         public int RecordsCount
         {
-            get { return this.fRecords.Count; }
+            get { return fRecords.Count; }
         }
 
         public GEDCOMRecord this[int index]
         {
-            get { return this.fRecords[index]; }
+            get { return fRecords[index]; }
         }
 
         public GEDCOMHeader Header
         {
-            get { return this.fHeader; }
+            get { return fHeader; }
         }
 
         public GEDCOMState State
         {
-            get { return this.fState; }
-            set { this.fState = value; }
+            get { return fState; }
+            set { fState = value; }
         }
 
         public event EventHandler OnChange
         {
-            add { this.fOnChange = value; }
-            remove { if (this.fOnChange == value) this.fOnChange = null; }
+            add { fOnChange = value; }
+            remove { if (fOnChange == value) fOnChange = null; }
         }
 
         public event EventHandler OnChanging
         {
-            add { this.fOnChanging = value; }
-            remove { if (this.fOnChanging == value) this.fOnChanging = null; }
+            add { fOnChanging = value; }
+            remove { if (fOnChanging == value) fOnChanging = null; }
         }
 
 
         public GEDCOMTree()
         {
-            this.fRecords = new GEDCOMList<GEDCOMRecord>(this);
-            this.fXRefIndex = new Dictionary<string, GEDCOMCustomRecord>();
-            this.fHeader = new GEDCOMHeader(this, this, "", "");
-            this.fFileName = "";
+            fRecords = new GEDCOMList<GEDCOMRecord>(this);
+            fXRefIndex = new Dictionary<string, GEDCOMCustomRecord>();
+            fHeader = new GEDCOMHeader(this, this, "", "");
+            fFileName = "";
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                //this.fXRefIndex.Dispose();
-                this.fHeader.Dispose();
-                this.fRecords.Dispose();
+                //fXRefIndex.Dispose();
+                fHeader.Dispose();
+                fRecords.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -177,6 +178,9 @@ namespace GKCommon.GEDCOM
             f.RegisterTag("PLAC", GEDCOMPlace.Create);
             f.RegisterTag("MAP", GEDCOMMap.Create);
             f.RegisterTag("_LOC", GEDCOMPointer.Create);
+            f.RegisterTag("_POSITION", GEDCOMCutoutPosition.Create);
+            f.RegisterTag("LANG", GEDCOMLanguage.Create);
+            f.RegisterTag("FAMC", GEDCOMPointer.Create);
 
             //f.RegisterTag("xxxx", xxxx.Create);
         }
@@ -184,50 +188,49 @@ namespace GKCommon.GEDCOM
         private static string GetSignByRecord(GEDCOMRecord record)
         {
             string result = "";
+            if (record == null) return result;
 
-            if (record != null)
+            switch (record.RecordType)
             {
-                switch (record.RecordType) {
-                    case GEDCOMRecordType.rtIndividual:
-                        result = "I";
-                        break;
-                    case GEDCOMRecordType.rtFamily:
-                        result = "F";
-                        break;
-                    case GEDCOMRecordType.rtNote:
-                        result = "N";
-                        break;
-                    case GEDCOMRecordType.rtMultimedia:
-                        result = "O";
-                        break;
-                    case GEDCOMRecordType.rtSource:
-                        result = "S";
-                        break;
-                    case GEDCOMRecordType.rtRepository:
-                        result = "R";
-                        break;
-                    case GEDCOMRecordType.rtGroup:
-                        result = "G";
-                        break;
-                    case GEDCOMRecordType.rtResearch:
-                        result = "RS";
-                        break;
-                    case GEDCOMRecordType.rtTask:
-                        result = "TK";
-                        break;
-                    case GEDCOMRecordType.rtCommunication:
-                        result = "CM";
-                        break;
-                    case GEDCOMRecordType.rtLocation:
-                        result = "L";
-                        break;
-                    case GEDCOMRecordType.rtSubmission:
-                        result = "????";
-                        break;
-                    case GEDCOMRecordType.rtSubmitter:
-                        result = "SUB";
-                        break;
-                }
+                case GEDCOMRecordType.rtIndividual:
+                    result = "I";
+                    break;
+                case GEDCOMRecordType.rtFamily:
+                    result = "F";
+                    break;
+                case GEDCOMRecordType.rtNote:
+                    result = "N";
+                    break;
+                case GEDCOMRecordType.rtMultimedia:
+                    result = "O";
+                    break;
+                case GEDCOMRecordType.rtSource:
+                    result = "S";
+                    break;
+                case GEDCOMRecordType.rtRepository:
+                    result = "R";
+                    break;
+                case GEDCOMRecordType.rtGroup:
+                    result = "G";
+                    break;
+                case GEDCOMRecordType.rtResearch:
+                    result = "RS";
+                    break;
+                case GEDCOMRecordType.rtTask:
+                    result = "TK";
+                    break;
+                case GEDCOMRecordType.rtCommunication:
+                    result = "CM";
+                    break;
+                case GEDCOMRecordType.rtLocation:
+                    result = "L";
+                    break;
+                case GEDCOMRecordType.rtSubmission:
+                    result = "????";
+                    break;
+                case GEDCOMRecordType.rtSubmitter:
+                    result = "SUB";
+                    break;
             }
 
             return result;
@@ -239,23 +242,24 @@ namespace GKCommon.GEDCOM
 
         private void XRefIndex_AddRecord(GEDCOMCustomRecord record)
         {
-            if (record != null && !string.IsNullOrEmpty(record.XRef))
-            {
-                bool exists = this.fXRefIndex.ContainsKey(record.XRef);
-                if (!exists) this.fXRefIndex.Add(record.XRef, record);
-            }
+            if (record == null || string.IsNullOrEmpty(record.XRef)) return;
+
+            bool exists = fXRefIndex.ContainsKey(record.XRef);
+            if (!exists) fXRefIndex.Add(record.XRef, record);
         }
 
         private void XRefIndex_DeleteRecord(GEDCOMRecord record)
         {
-            bool exists = this.fXRefIndex.ContainsKey(record.XRef);
-            if (exists) this.fXRefIndex.Remove(record.XRef);
+            bool exists = fXRefIndex.ContainsKey(record.XRef);
+            if (exists) fXRefIndex.Remove(record.XRef);
         }
 
         public GEDCOMRecord XRefIndex_Find(string xref)
         {
+            if (string.IsNullOrEmpty(xref)) return null;
+
             GEDCOMCustomRecord record;
-            if (this.fXRefIndex.TryGetValue(xref, out record)) {
+            if (fXRefIndex.TryGetValue(xref, out record)) {
                 return (record as GEDCOMRecord);
             } else {
                 return null;
@@ -266,7 +270,7 @@ namespace GKCommon.GEDCOM
         {
             string sign = GetSignByRecord(record);
             int I = 1;
-            while (this.fXRefIndex.ContainsKey(sign + I.ToString()))
+            while (fXRefIndex.ContainsKey(sign + I.ToString()))
             {
                 I++;
             }
@@ -277,11 +281,11 @@ namespace GKCommon.GEDCOM
         {
             if (!string.IsNullOrEmpty(oldXRef))
             {
-                bool exists = this.fXRefIndex.ContainsKey(oldXRef);
-                if (exists) this.fXRefIndex.Remove(oldXRef);
+                bool exists = fXRefIndex.ContainsKey(oldXRef);
+                if (exists) fXRefIndex.Remove(oldXRef);
             }
 
-            this.XRefIndex_AddRecord(record);
+            XRefIndex_AddRecord(record);
         }
 
         #endregion
@@ -295,47 +299,47 @@ namespace GKCommon.GEDCOM
 
         public void Clear()
         {
-            this.fHeader.Clear();
-            this.fRecords.Clear();
-            this.fXRefIndex.Clear();
+            fHeader.Clear();
+            fRecords.Clear();
+            fXRefIndex.Clear();
         }
 
         public GEDCOMRecord AddRecord(GEDCOMRecord record)
         {
-            this.fRecords.Add(record);
-            this.XRefIndex_AddRecord(record);
+            fRecords.Add(record);
+            XRefIndex_AddRecord(record);
             return record;
         }
 
         /*public void Delete(int index)
         {
-            this.XRefIndex_DeleteRecord(this.fRecords[index]);
-            this.fRecords.DeleteAt(index);
+            XRefIndex_DeleteRecord(fRecords[index]);
+            fRecords.DeleteAt(index);
         }*/
 
         public void DeleteRecord(GEDCOMRecord record)
         {
-            this.XRefIndex_DeleteRecord(record);
-            this.fRecords.Delete(record);
+            XRefIndex_DeleteRecord(record);
+            fRecords.Delete(record);
         }
 
         public GEDCOMRecord Extract(int index)
         {
-            this.XRefIndex_DeleteRecord(this.fRecords[index]);
-            return this.fRecords.Extract(index);
+            XRefIndex_DeleteRecord(fRecords[index]);
+            return fRecords.Extract(index);
         }
 
         public int IndexOf(GEDCOMRecord record)
         {
-            return this.fRecords.IndexOf(record);
+            return fRecords.IndexOf(record);
         }
 
         public GEDCOMRecord FindUID(string uid)
         {
-            int num = this.fRecords.Count;
+            int num = fRecords.Count;
             for (int i = 0; i < num; i++)
             {
-                GEDCOMRecord rec = this.fRecords[i];
+                GEDCOMRecord rec = fRecords[i];
                 if (rec.UID == uid) {
                     return rec;
                 }
@@ -346,9 +350,9 @@ namespace GKCommon.GEDCOM
 
         public void Pack()
         {
-            int num = this.fRecords.Count;
+            int num = fRecords.Count;
             for (int i = 0; i < num; i++) {
-                this.fRecords[i].Pack();
+                fRecords[i].Pack();
             }
         }
 
@@ -358,219 +362,252 @@ namespace GKCommon.GEDCOM
 
         public void SetFileName(string fileName)
         {
-            this.fFileName = fileName;
+            fFileName = fileName;
         }
 
         public void LoadFromFile(string fileName)
         {
             using (FileStream fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read)) {
-                this.LoadFromStreamExt(fileStream, fileStream, fileName);
+                LoadFromStreamExt(fileStream, fileStream, fileName);
             }
         }
 
         public void SaveToFile(string fileName, GEDCOMCharacterSet charSet)
         {
+            // Attention: processing of Header moved to BaseContext!
+
             using (FileStream fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
             {
-                this.SaveToStreamExt(fileStream, fileName, charSet);
+                SaveToStreamExt(fileStream, fileName, charSet);
             }
         }
 
         public void LoadFromStreamExt(Stream fileStream, Stream inputStream, string fileName)
         {
-            this.fFileName = fileName;
+            fFileName = fileName;
 
-            using (StreamReader reader = new StreamReader(inputStream, Encoding.GetEncoding(1251))) {
-                this.Clear();
-                this.LoadFromStream(fileStream, reader);
-                this.fHeader.CharacterSet = GEDCOMCharacterSet.csASCII;
+            using (StreamReader reader = GEDCOMUtils.OpenStreamReader(inputStream, DEFAULT_ENCODING)) {
+                Clear();
+                LoadFromStream(fileStream, reader);
+                fHeader.CharacterSet = GEDCOMCharacterSet.csASCII;
             }
         }
 
         public void SaveToStreamExt(Stream outputStream, string fileName, GEDCOMCharacterSet charSet)
         {
-            this.fFileName = fileName;
+            // Attention: processing of Header moved to BaseContext!
 
-            string subm = this.fHeader.GetTagStringValue("SUBM");
-            int rev = this.fHeader.FileRevision;
+            fFileName = fileName;
 
-            this.fHeader.Clear();
-            this.fHeader.Source = "GEDKeeper";
-            this.fHeader.ReceivingSystemName = "GEDKeeper";
-            this.fHeader.CharacterSet = charSet;
-            this.fHeader.Language = "Russian";
-            this.fHeader.GEDCOMVersion = "5.5";
-            this.fHeader.GEDCOMForm = "LINEAGE-LINKED";
-            this.fHeader.FileName = Path.GetFileName(fileName);
-            this.fHeader.TransmissionDateTime = DateTime.Now;
-            this.fHeader.FileRevision = rev + 1;
-
-            if (subm != "") {
-                this.fHeader.SetTagStringValue("SUBM", subm);
-            }
-
-            this.Pack();
+            Pack();
 
             using (StreamWriter writer = new StreamWriter(outputStream, GEDCOMUtils.GetEncodingByCharacterSet(charSet))) {
-                this.SaveToStream(writer);
+                SaveToStream(writer);
                 writer.Flush();
             }
 
-            this.fHeader.CharacterSet = GEDCOMCharacterSet.csASCII;
+            fHeader.CharacterSet = GEDCOMCharacterSet.csASCII;
         }
+
+        #region Encoding hack
+
+        private enum EncodingState { esUnchecked, esUnchanged, esChanged }
+
+        private const int DEF_CODEPAGE = 1251;
+        private static readonly Encoding DEFAULT_ENCODING = Encoding.GetEncoding(DEF_CODEPAGE);
+
+        private static string ConvertStr(Encoding encoding, string str)
+        {
+            byte[] src = DEFAULT_ENCODING.GetBytes(str);
+            str = encoding.GetString(src);
+            return str;
+        }
+
+        private void DefineEncoding(StreamReader reader, ref Encoding sourceEncoding, ref EncodingState encodingState)
+        {
+            GEDCOMCharacterSet charSet = fHeader.CharacterSet;
+            switch (charSet)
+            {
+                case GEDCOMCharacterSet.csUTF8:
+                    if (!GEDCOMUtils.IsUnicodeEncoding(reader.CurrentEncoding)) {
+                        sourceEncoding = Encoding.UTF8;
+                        encodingState = EncodingState.esChanged; // file without BOM
+                    } else {
+                        encodingState = EncodingState.esUnchanged;
+                    }
+                    break;
+
+                case GEDCOMCharacterSet.csUNICODE:
+                    if (!GEDCOMUtils.IsUnicodeEncoding(reader.CurrentEncoding)) {
+                        sourceEncoding = Encoding.Unicode;
+                        encodingState = EncodingState.esChanged; // file without BOM
+                    } else {
+                        encodingState = EncodingState.esUnchanged;
+                    }
+                    break;
+
+                case GEDCOMCharacterSet.csASCII:
+                    string cpVers = fHeader.CharacterSetVersion;
+                    if (!string.IsNullOrEmpty(cpVers)) {
+                        int sourceCodepage = SysUtils.ParseInt(cpVers, DEF_CODEPAGE);
+                        sourceEncoding = Encoding.GetEncoding(sourceCodepage);
+                        encodingState = EncodingState.esChanged;
+                    } else {
+                        sourceEncoding = Encoding.GetEncoding(DEF_CODEPAGE);
+                        encodingState = EncodingState.esChanged;
+                    }
+                    break;
+            }
+        }
+
+        #endregion
 
         private void LoadFromStream(Stream fileStream, StreamReader reader)
         {
-            long fileSize = fileStream.Length;
-            int progress = 0;
-
-            this.fState = GEDCOMState.osLoading;
+            fState = GEDCOMState.osLoading;
             try
             {
+                Encoding sourceEncoding = DEFAULT_ENCODING;
+                EncodingState encodingState = EncodingState.esUnchecked;
+                long fileSize = fileStream.Length;
+                int progress = 0;
+
                 GEDCOMCustomRecord curRecord = null;
                 GEDCOMTag curTag = null;
-                GEDCOMCharacterSet charSet = GEDCOMCharacterSet.csASCII;
 
                 int lineNum = 0;
                 while (reader.Peek() != -1)
                 {
                     lineNum++;
-                    string srcLine = reader.ReadLine();
-                    string str = GEDCOMUtils.TrimLeft(srcLine);
+                    string str = reader.ReadLine();
+                    str = GEDCOMUtils.TrimLeft(str);
+                    if (str.Length == 0) continue;
 
-                    if (str.Length != 0)
+                    if (!GEDCOMUtils.IsDigit(str[0]))
                     {
-                        if (!GEDCOMUtils.IsDigit(str[0]))
+                        GEDCOMUtils.FixFTBLine(curRecord, curTag, lineNum, str);
+                    }
+                    else
+                    {
+                        int tagLevel;
+                        string tagXRef, tagName, tagValue;
+
+                        try
                         {
-                            GEDCOMUtils.FixFTBLine(curRecord, curTag, lineNum, str);
+                            str = GEDCOMUtils.ExtractNumber(str, out tagLevel, false, 0);
+                            str = GEDCOMUtils.ExtractDelimiter(str, 0);
+                            str = GEDCOMUtils.ExtractXRef(str, out tagXRef, true, "");
+                            str = GEDCOMUtils.ExtractDelimiter(str, 0);
+                            str = GEDCOMUtils.ExtractString(str, out tagName, "");
+                            tagName = tagName.ToUpperInvariant();
+                            str = GEDCOMUtils.ExtractDelimiter(str, 1);
+                            tagValue = str;
                         }
-                        else
+                        catch (EGEDCOMException ex)
                         {
-                            int tagLevel;
-                            string tagXRef;
-                            string tagName;
-                            string tagValue;
+                            throw new EGEDCOMException("Syntax error in line " + Convert.ToString(lineNum) + ".\r" + ex.Message);
+                        }
 
-                            try
-                            {
-                                str = GEDCOMUtils.ExtractNumber(str, out tagLevel, false, 0);
-                                str = GEDCOMUtils.ExtractDelimiter(str, 0);
-                                str = GEDCOMUtils.ExtractXRef(str, out tagXRef, true, "");
-                                str = GEDCOMUtils.ExtractDelimiter(str, 0);
-                                str = GEDCOMUtils.ExtractString(str, out tagName, "");
-                                tagName = tagName.ToUpperInvariant();
-                                str = GEDCOMUtils.ExtractDelimiter(str, 1);
-                                tagValue = str;
-                            }
-                            catch (EGEDCOMException ex)
-                            {
-                                throw new EGEDCOMException("Syntax error in line " + Convert.ToString(lineNum) + ".\r" + ex.Message);
+                        // convert codepages
+                        if (!string.IsNullOrEmpty(tagValue) && encodingState == EncodingState.esChanged)
+                        {
+                            tagValue = ConvertStr(sourceEncoding, tagValue);
+                        }
+
+                        if (tagLevel == 0)
+                        {
+                            if (curRecord == fHeader && encodingState == EncodingState.esUnchecked) {
+                                // beginning recognition of the first is not header record
+                                // to check for additional versions of the code page
+                                DefineEncoding(reader, ref sourceEncoding, ref encodingState);
                             }
 
-                            // temp hack
-                            if (!string.IsNullOrEmpty(tagValue) && charSet == GEDCOMCharacterSet.csUTF8)
+                            if (tagName == "INDI")
                             {
-                                if (!Equals(reader.CurrentEncoding, Encoding.UTF8)) {
-                                    tagValue = GEDCOMUtils.StrToUtf8(tagValue);
-                                }
+                                curRecord = AddRecord(new GEDCOMIndividualRecord(this, this, "", ""));
                             }
-                            // end
-
-                            if (tagLevel == 0)
+                            else if (tagName == "FAM")
                             {
-                                if (tagName == "INDI")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMIndividualRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "FAM")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMFamilyRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "OBJE")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMMultimediaRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "NOTE")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMNoteRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "REPO")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMRepositoryRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "SOUR")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMSourceRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "SUBN")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMSubmissionRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "SUBM")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMSubmitterRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "_GROUP")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMGroupRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "_RESEARCH")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMResearchRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "_TASK")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMTaskRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "_COMM")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMCommunicationRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "_LOC")
-                                {
-                                    curRecord = this.AddRecord(new GEDCOMLocationRecord(this, this, "", ""));
-                                }
-                                else if (tagName == "HEAD")
-                                {
-                                    curRecord = this.fHeader;
-                                }
-                                else if (tagName == "TRLR")
-                                {
-                                    break;
-                                }
-                                else
-                                {
-                                    curRecord = null;
-                                }
-
-                                if (curRecord != null && tagXRef != "")
-                                {
-                                    curRecord.XRef = tagXRef;
-                                }
-                                curTag = null;
+                                curRecord = AddRecord(new GEDCOMFamilyRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "OBJE")
+                            {
+                                curRecord = AddRecord(new GEDCOMMultimediaRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "NOTE")
+                            {
+                                curRecord = AddRecord(new GEDCOMNoteRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "REPO")
+                            {
+                                curRecord = AddRecord(new GEDCOMRepositoryRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "SOUR")
+                            {
+                                curRecord = AddRecord(new GEDCOMSourceRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "SUBN")
+                            {
+                                curRecord = AddRecord(new GEDCOMSubmissionRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "SUBM")
+                            {
+                                curRecord = AddRecord(new GEDCOMSubmitterRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "_GROUP")
+                            {
+                                curRecord = AddRecord(new GEDCOMGroupRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "_RESEARCH")
+                            {
+                                curRecord = AddRecord(new GEDCOMResearchRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "_TASK")
+                            {
+                                curRecord = AddRecord(new GEDCOMTaskRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "_COMM")
+                            {
+                                curRecord = AddRecord(new GEDCOMCommunicationRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "_LOC")
+                            {
+                                curRecord = AddRecord(new GEDCOMLocationRecord(this, this, "", ""));
+                            }
+                            else if (tagName == "HEAD")
+                            {
+                                curRecord = fHeader;
+                            }
+                            else if (tagName == "TRLR")
+                            {
+                                break;
                             }
                             else
                             {
-                                // temp hack
-                                if (tagName == "CHAR") {
-                                    charSet = GEDCOMUtils.GetCharacterSetVal(tagValue);
-                                }
-                                // end
+                                curRecord = null;
+                            }
 
-                                if (curRecord != null)
+                            if (curRecord != null && tagXRef != "")
+                            {
+                                curRecord.XRef = tagXRef;
+                            }
+                            curTag = null;
+                        }
+                        else
+                        {
+                            if (curRecord != null)
+                            {
+                                if (curTag == null || tagLevel == 1)
                                 {
-                                    if (curTag == null || tagLevel == 1)
+                                    curTag = curRecord.AddTag(tagName, tagValue, null);
+                                }
+                                else
+                                {
+                                    while (tagLevel <= curTag.Level)
                                     {
-                                        curTag = curRecord.AddTag(tagName, tagValue, null);
+                                        curTag = (curTag.Parent as GEDCOMTag);
                                     }
-                                    else
-                                    {
-                                        while (tagLevel <= curTag.Level)
-                                        {
-                                            curTag = (curTag.Parent as GEDCOMTag);
-                                        }
-                                        curTag = curTag.AddTag(tagName, tagValue, null);
-                                    }
+                                    curTag = curTag.AddTag(tagName, tagValue, null);
                                 }
                             }
                         }
@@ -588,18 +625,18 @@ namespace GKCommon.GEDCOM
             }
             finally
             {
-                this.fState = GEDCOMState.osReady;
+                fState = GEDCOMState.osReady;
             }
         }
 
         private void SaveToStream(StreamWriter writer)
         {
-            this.SaveHeaderToStream(writer);
+            SaveHeaderToStream(writer);
 
-            int num = this.fRecords.Count;
+            int num = fRecords.Count;
             for (int i = 0; i < num; i++)
             {
-                this.fRecords[i].SaveToStream(writer);
+                fRecords[i].SaveToStream(writer);
             }
 
             SaveFooterToStream(writer);
@@ -607,7 +644,7 @@ namespace GKCommon.GEDCOM
 
         public void SaveToStream(StreamWriter writer, List<GEDCOMRecord> list)
         {
-            this.SaveHeaderToStream(writer);
+            SaveHeaderToStream(writer);
 
             if (list != null)
             {
@@ -623,7 +660,7 @@ namespace GKCommon.GEDCOM
 
         private void SaveHeaderToStream(StreamWriter stream)
         {
-            this.fHeader.SaveToStream(stream);
+            fHeader.SaveToStream(stream);
         }
 
         private static void SaveFooterToStream(StreamWriter stream)
@@ -636,30 +673,49 @@ namespace GKCommon.GEDCOM
 
         #region Auxiliary
 
+        public int[] GetRecordStats()
+        {
+            int[] stats = new int[((int)GEDCOMRecordType.rtLast)];
+
+            int num = RecordsCount;
+            for (int i = 0; i < num; i++)
+            {
+                GEDCOMRecord rec = this[i];
+                int index = (int)rec.RecordType;
+                stats[index] += 1;
+            }
+
+            return stats;
+        }
+
         public GEDCOMFormat GetGEDCOMFormat()
         {
-            string sour = this.fHeader.Source;
+            if (fFormat != GEDCOMFormat.gf_Unknown) return fFormat;
+
+            string sour = fHeader.Source;
 
             for (GEDCOMFormat gf = GEDCOMFormat.gf_Native; gf <= GEDCOMFormat.gf_Last; gf++)
             {
                 if (GEDCOMConsts.GEDCOMFormats[(int)gf].Sign == sour)
                 {
+                    fFormat = gf;
                     return gf;
                 }
             }
 
+            fFormat = GEDCOMFormat.gf_Unknown;
             return GEDCOMFormat.gf_Unknown;
         }
 
         public GEDCOMSubmitterRecord GetSubmitter()
         {
-            GEDCOMSubmitterRecord submitter = this.fHeader.Submitter.Value as GEDCOMSubmitterRecord;
+            GEDCOMSubmitterRecord submitter = fHeader.Submitter.Value as GEDCOMSubmitterRecord;
             if (submitter == null)
             {
                 submitter = new GEDCOMSubmitterRecord(this, this, "", "");
                 submitter.InitNew();
-                this.AddRecord(submitter);
-                this.fHeader.SetTagStringValue("SUBM", "@" + submitter.XRef + "@");
+                AddRecord(submitter);
+                fHeader.SetTagStringValue("SUBM", "@" + submitter.XRef + "@");
             }
             return submitter;
         }
@@ -670,7 +726,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -681,7 +737,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -692,7 +748,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -703,7 +759,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -714,7 +770,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -725,7 +781,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -736,7 +792,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -747,7 +803,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -758,7 +814,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -769,7 +825,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -780,7 +836,7 @@ namespace GKCommon.GEDCOM
             result.InitNew();
             result.ChangeDate.ChangeDateTime = DateTime.Now;
 
-            this.AddRecord(result);
+            AddRecord(result);
 
             return result;
         }
@@ -789,241 +845,208 @@ namespace GKCommon.GEDCOM
 
         public bool DeleteIndividualRecord(GEDCOMIndividualRecord iRec)
         {
-            bool result = false;
-            if (iRec != null)
-            {
-                GEDCOMUtils.CleanIndividual(iRec);
+            if (iRec == null) return false;
 
-                this.DeleteRecord(iRec);
-                result = true;
-            }
-            return result;
+            GEDCOMUtils.CleanIndividual(iRec);
+
+            DeleteRecord(iRec);
+            return true;
         }
 
         public bool DeleteFamilyRecord(GEDCOMFamilyRecord famRec)
         {
-            bool result = false;
-            if (famRec != null)
-            {
-                GEDCOMUtils.CleanFamily(famRec);
+            if (famRec == null) return false;
 
-                this.DeleteRecord(famRec);
-                result = true;
-            }
-            return result;
+            GEDCOMUtils.CleanFamily(famRec);
+
+            DeleteRecord(famRec);
+            return true;
         }
 
         public bool DeleteGroupRecord(GEDCOMGroupRecord groupRec)
         {
-            bool result = false;
-            if (groupRec != null)
-            {
-                for (int i = groupRec.Members.Count - 1; i >= 0; i--)
-                {
-                    GEDCOMIndividualRecord member = groupRec.Members[i].Value as GEDCOMIndividualRecord;
-                    groupRec.RemoveMember(member);
-                }
+            if (groupRec == null) return false;
 
-                this.DeleteRecord(groupRec);
-                result = true;
+            for (int i = groupRec.Members.Count - 1; i >= 0; i--)
+            {
+                GEDCOMIndividualRecord member = groupRec.Members[i].Value as GEDCOMIndividualRecord;
+                groupRec.RemoveMember(member);
             }
-            return result;
+
+            DeleteRecord(groupRec);
+            return true;
         }
 
         public bool DeleteMediaRecord(GEDCOMMultimediaRecord mRec)
         {
-            bool result = false;
-            if (mRec != null)
+            if (mRec == null) return false;
+
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
             {
-                int num = this.RecordsCount - 1;
-                for (int i = 0; i <= num; i++)
+                GEDCOMRecord rec = this[i];
+                for (int j = rec.MultimediaLinks.Count - 1; j >= 0; j--)
                 {
-                    GEDCOMRecord rec = this[i];
-                    for (int j = rec.MultimediaLinks.Count - 1; j >= 0; j--)
+                    if (rec.MultimediaLinks[j].Value == mRec)
                     {
-                        if (rec.MultimediaLinks[j].Value == mRec)
-                        {
-                            rec.MultimediaLinks.DeleteAt(j);
-                        }
+                        rec.MultimediaLinks.DeleteAt(j);
                     }
                 }
-
-                this.DeleteRecord(mRec);
-                result = true;
             }
-            return result;
+
+            DeleteRecord(mRec);
+            return true;
         }
 
         public bool DeleteNoteRecord(GEDCOMNoteRecord nRec)
         {
-            bool result = false;
-            if (nRec != null)
-            {
-                int num = this.RecordsCount - 1;
-                for (int i = 0; i <= num; i++)
-                {
-                    GEDCOMRecord rec = this[i];
-                    for (int j = rec.Notes.Count - 1; j >= 0; j--)
-                    {
-                        if (rec.Notes[j].Value == nRec)
-                            rec.Notes.DeleteAt(j);
-                    }
-                }
+            if (nRec == null) return false;
 
-                this.DeleteRecord(nRec);
-                result = true;
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
+            {
+                GEDCOMRecord rec = this[i];
+                for (int j = rec.Notes.Count - 1; j >= 0; j--)
+                {
+                    if (rec.Notes[j].Value == nRec)
+                        rec.Notes.DeleteAt(j);
+                }
             }
-            return result;
+
+            DeleteRecord(nRec);
+            return true;
         }
 
         public bool DeleteRepositoryRecord(GEDCOMRepositoryRecord repRec)
         {
-            bool result = false;
-            if (repRec != null)
+            if (repRec == null) return false;
+
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
             {
-                int num = this.RecordsCount - 1;
-                for (int i = 0; i <= num; i++)
+                GEDCOMRecord rec = this[i];
+                if (rec.RecordType == GEDCOMRecordType.rtSource)
                 {
-                    GEDCOMRecord rec = this[i];
-                    if (rec is GEDCOMSourceRecord)
+                    GEDCOMSourceRecord srcRec = (GEDCOMSourceRecord) rec;
+                    for (int j = srcRec.RepositoryCitations.Count - 1; j >= 0; j--)
                     {
-                        GEDCOMSourceRecord srcRec = rec as GEDCOMSourceRecord;
-                        for (int j = srcRec.RepositoryCitations.Count - 1; j >= 0; j--)
+                        if (srcRec.RepositoryCitations[j].Value == repRec)
                         {
-                            if (srcRec.RepositoryCitations[j].Value == repRec)
-                            {
-                                srcRec.RepositoryCitations.Delete(srcRec.RepositoryCitations[j]);
-                            }
+                            srcRec.RepositoryCitations.Delete(srcRec.RepositoryCitations[j]);
                         }
                     }
                 }
-
-                this.DeleteRecord(repRec);
-                result = true;
             }
-            return result;
+
+            DeleteRecord(repRec);
+            return true;
         }
 
         public bool DeleteResearchRecord(GEDCOMResearchRecord resRec)
         {
-            bool result = false;
-            if (resRec != null)
-            {
-                this.DeleteRecord(resRec);
-                result = true;
-            }
-            return result;
+            if (resRec == null) return false;
+
+            DeleteRecord(resRec);
+            return true;
         }
 
         public bool DeleteSourceRecord(GEDCOMSourceRecord srcRec)
         {
-            bool result = false;
-            if (srcRec != null)
+            if (srcRec == null) return false;
+
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
             {
-                int num = this.RecordsCount - 1;
-                for (int i = 0; i <= num; i++)
+                GEDCOMRecord rec = this[i];
+                for (int j = rec.SourceCitations.Count - 1; j >= 0; j--)
                 {
-                    GEDCOMRecord rec = this[i];
-                    for (int j = rec.SourceCitations.Count - 1; j >= 0; j--)
+                    if (rec.SourceCitations[j].Value == srcRec)
                     {
-                        if (rec.SourceCitations[j].Value == srcRec)
-                        {
-                            rec.SourceCitations.DeleteAt(j);
-                        }
+                        rec.SourceCitations.DeleteAt(j);
                     }
                 }
-                
-                this.DeleteRecord(srcRec);
-                result = true;
             }
-            return result;
+
+            DeleteRecord(srcRec);
+            return true;
         }
 
         public bool DeleteTaskRecord(GEDCOMTaskRecord taskRec)
         {
-            bool result = false;
-            if (taskRec != null)
+            if (taskRec == null) return false;
+
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
             {
-                int num = this.RecordsCount;
-                for (int i = 0; i < num; i++)
+                GEDCOMRecord rec = this[i];
+                if (rec.RecordType == GEDCOMRecordType.rtResearch)
                 {
-                    GEDCOMRecord rec = this[i];
-                    if (rec is GEDCOMResearchRecord)
+                    GEDCOMResearchRecord resRec = (GEDCOMResearchRecord) rec;
+                    for (int j = resRec.Tasks.Count - 1; j >= 0; j--)
                     {
-                        GEDCOMResearchRecord resRec = rec as GEDCOMResearchRecord;
-                        for (int j = resRec.Tasks.Count - 1; j >= 0; j--)
+                        if (resRec.Tasks[j].Value == taskRec)
                         {
-                            if (resRec.Tasks[j].Value == taskRec)
-                            {
-                                resRec.Tasks.DeleteAt(j);
-                            }
+                            resRec.Tasks.DeleteAt(j);
                         }
                     }
                 }
-
-                this.DeleteRecord(taskRec);
-                result = true;
             }
-            return result;
+
+            DeleteRecord(taskRec);
+            return true;
         }
 
         public bool DeleteCommunicationRecord(GEDCOMCommunicationRecord commRec)
         {
-            bool result = false;
-            if (commRec != null)
+            if (commRec == null) return false;
+
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
             {
-                int num = this.RecordsCount;
-                for (int i = 0; i < num; i++)
+                GEDCOMRecord rec = this[i];
+                if (rec.RecordType == GEDCOMRecordType.rtResearch)
                 {
-                    GEDCOMRecord rec = this[i];
-                    if (rec is GEDCOMResearchRecord)
+                    GEDCOMResearchRecord resRec = (GEDCOMResearchRecord) rec;
+                    for (int j = resRec.Communications.Count - 1; j >= 0; j--)
                     {
-                        GEDCOMResearchRecord resRec = rec as GEDCOMResearchRecord;
-                        for (int j = resRec.Communications.Count - 1; j >= 0; j--)
+                        if (resRec.Communications[j].Value == commRec)
                         {
-                            if (resRec.Communications[j].Value == commRec)
-                            {
-                                resRec.Communications.DeleteAt(j);
-                            }
+                            resRec.Communications.DeleteAt(j);
                         }
                     }
                 }
-
-                this.DeleteRecord(commRec);
-                result = true;
             }
-            return result;
+
+            DeleteRecord(commRec);
+            return true;
         }
 
         public bool DeleteLocationRecord(GEDCOMLocationRecord locRec)
         {
-            bool result = false;
-            if (locRec != null)
+            if (locRec == null) return false;
+
+            int num = fRecords.Count;
+            for (int i = 0; i < num; i++)
             {
-                int num = this.RecordsCount;
-                for (int i = 0; i < num; i++)
+                GEDCOMRecord rec = this[i];
+
+                if (rec is GEDCOMRecordWithEvents)
                 {
-                    GEDCOMRecord rec = this[i];
+                    GEDCOMRecordWithEvents evsRec = (GEDCOMRecordWithEvents) rec;
 
-                    if (rec is GEDCOMRecordWithEvents)
+                    for (int j = evsRec.Events.Count - 1; j >= 0; j--)
                     {
-                        GEDCOMRecordWithEvents evsRec = rec as GEDCOMRecordWithEvents;
+                        GEDCOMCustomEvent ev = evsRec.Events[j];
 
-                        for (int j = evsRec.Events.Count - 1; j >= 0; j--)
-                        {
-                            GEDCOMCustomEvent ev = evsRec.Events[j];
-
-                            if (ev.Detail.Place.Location.Value == locRec) {
-                                ev.Detail.Place.DeleteTag("_LOC");
-                            }
+                        if (ev.Place.Location.Value == locRec) {
+                            ev.Place.DeleteTag("_LOC");
                         }
                     }
                 }
-
-                this.DeleteRecord(locRec);
-                result = true;
             }
-            return result;
+
+            DeleteRecord(locRec);
+            return true;
         }
 
         #endregion
@@ -1032,24 +1055,24 @@ namespace GKCommon.GEDCOM
 
         public bool IsUpdated()
         {
-            return (this.fUpdateCount != 0);
+            return (fUpdateCount != 0);
         }
 
         public void BeginUpdate()
         {
-            if (this.fUpdateCount == 0)
+            if (fUpdateCount == 0)
             {
-                this.SetUpdateState(true);
+                SetUpdateState(true);
             }
-            this.fUpdateCount++;
+            fUpdateCount++;
         }
 
         public void EndUpdate()
         {
-            this.fUpdateCount--;
-            if (this.fUpdateCount == 0)
+            fUpdateCount--;
+            if (fUpdateCount == 0)
             {
-                this.SetUpdateState(false);
+                SetUpdateState(false);
             }
         }
 
@@ -1057,27 +1080,27 @@ namespace GKCommon.GEDCOM
         {
             if (updating)
             {
-                this.Changing();
+                Changing();
             }
             else
             {
-                this.Changed();
+                Changed();
             }
         }
 
         private void Changed()
         {
-            if (this.fUpdateCount == 0 && this.fOnChange != null)
+            if (fUpdateCount == 0 && fOnChange != null)
             {
-                this.fOnChange(this, new EventArgs());
+                fOnChange(this, new EventArgs());
             }
         }
 
         private void Changing()
         {
-            if (this.fUpdateCount == 0 && this.fOnChanging != null)
+            if (fUpdateCount == 0 && fOnChanging != null)
             {
-                this.fOnChanging(this, new EventArgs());
+                fOnChanging(this, new EventArgs());
             }
         }
 

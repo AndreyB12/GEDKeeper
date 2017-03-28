@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -26,11 +26,11 @@ using GKCommon;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKTimeLinePlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 TimeLine plugin")]
+[assembly: AssemblyDescription("GEDKeeper TimeLine plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -46,36 +46,38 @@ namespace GKTimeLinePlugin
         /* 130 */ LSID_TimeScale,
         /* 131 */ LSID_CurrentYear,
     }
-    
+
     public sealed class Plugin : BaseObject, IPlugin, IWidget
     {
         private string fDisplayName = "GKTimeLinePlugin";
         private IHost fHost;
         private ILangMan fLangMan;
 
-        public string DisplayName { get { return this.fDisplayName; } }
+        public string DisplayName { get { return fDisplayName; } }
         public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
 
-        private TimeLineWidget frm;
-        
+        private TimeLineWidget fForm;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (frm != null) frm.Dispose();
+                if (fForm != null) fForm.Dispose();
             }
             base.Dispose(disposing);
         }
 
+        #region IPlugin support
+
         public void Execute()
         {
-            if (!this.fHost.IsWidgetActive(this)) {
-                frm = new TimeLineWidget(this);
-                frm.Show();
+            if (!fHost.IsWidgetActive(this)) {
+                fForm = new TimeLineWidget(this);
+                fForm.Show();
             } else {
-                frm.Close();
-                frm = null;
+                fForm.Close();
+                fForm = null;
             }
         }
 
@@ -87,8 +89,10 @@ namespace GKTimeLinePlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
-                this.fDisplayName = this.fLangMan.LS(PLS.LSID_MITimeLine);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(PLS.LSID_MITimeLine);
+
+                if (fForm != null) fForm.SetLang();
             }
             catch (Exception ex)
             {
@@ -101,8 +105,7 @@ namespace GKTimeLinePlugin
             bool result = true;
             try
             {
-                this.fHost = host;
-                // Implement any startup code here
+                fHost = host;
             }
             catch (Exception ex)
             {
@@ -117,7 +120,6 @@ namespace GKTimeLinePlugin
             bool result = true;
             try
             {
-                // Implement any shutdown code here
             }
             catch (Exception ex)
             {
@@ -127,24 +129,27 @@ namespace GKTimeLinePlugin
             return result;
         }
 
+        #endregion
+
         #region IWidget support
 
         void IWidget.WidgetInit(IHost host) {}
 
-        void IWidget.BaseChanged(IBaseWindow aBase)
+        void IWidget.BaseChanged(IBaseWindow baseWin)
         {
-            if (frm != null) {
-                frm.BaseChanged(aBase);
-            }
-        }
-        
-        void IWidget.BaseClosed(IBaseWindow aBase)
-        {
-            if (frm != null) {
-                frm.BaseChanged(null);
+            if (fForm != null) {
+                fForm.BaseChanged(baseWin);
             }
         }
 
+        void IWidget.BaseClosed(IBaseWindow baseWin)
+        {
+            if (fForm != null) {
+                fForm.BaseChanged(null);
+            }
+        }
+
+        void IWidget.BaseRenamed(IBaseWindow baseWin, string oldName, string newName) {}
         void IWidget.WidgetEnable() {}
 
         #endregion

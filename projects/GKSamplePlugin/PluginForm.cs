@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -27,17 +27,17 @@ namespace GKSamplePlugin
 {
     public partial class PluginForm : Form
     {
-        private readonly IPlugin plugin;
+        private readonly IPlugin fPlugin;
 
         public PluginForm(IPlugin plugin)
         {
             InitializeComponent();
-            this.plugin = plugin;
+            fPlugin = plugin;
         }
 
         private void frmP1Main_Load(object sender, EventArgs e)
         {
-            tbInfo.AppendText(plugin.DisplayName + "\r\n");
+            tbInfo.AppendText(fPlugin.DisplayName + "\r\n");
         }
     }
 }

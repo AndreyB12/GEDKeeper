@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2016 by Serg V. Zhdanovskih, Ruslan Garipov.
+ *  Copyright (C) 2016 by Sergey V. Zhdanovskih, Ruslan Garipov.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -32,7 +32,7 @@ namespace GKCommon
     /// </summary>
     [Serializable]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct UDN : ICloneable, IComparable
+    public struct UDN : ICloneable, IComparable, IComparable<UDN>, IEquatable<UDN>
     {
         private const uint IgnoreYear = 1u << 31;
         private const uint IgnoreMonth = 1u << 30;
@@ -80,7 +80,7 @@ namespace GKCommon
         /// <param name="value"></param>
         private UDN(uint value)
         {
-            this.fValue = value;
+            fValue = value;
         }
 
         /// <summary>
@@ -92,26 +92,34 @@ namespace GKCommon
         /// <param name="day"></param>
         public UDN(UDNCalendarType calendar, int year, int month, int day)
         {
-            this.fValue = CreateVal(calendar, year, month, day);
+            fValue = CreateVal(calendar, year, month, day);
         }
 
         #region Object overrides
 
         public override string ToString()
         {
-            int y, m, d;
-            CalendarConverter.jd_to_gregorian(this.GetUnmaskedValue() + 0.5, out y, out m, out d);
+            int y = 0, m = 0, d = 0;
 
-            string sy = HasKnownYear() ? y.ToString() : "????";
-            string sm = HasKnownMonth() ? m.ToString() : "??";
-            string sd = HasKnownDay() ? d.ToString() : "??";
+            if (HasKnownYear() || HasKnownMonth() || HasKnownDay()) {
+                uint unmaskedVal = GetUnmaskedValue();
+                CalendarConverter.jd_to_gregorian2(unmaskedVal, out y, out m, out d);
+            }
+
+            int sign = Math.Sign(y);
+            y = Math.Abs(y);
+            string sy = HasKnownYear() ? y.ToString().PadLeft(4, '0') : "????";
+            if (sign == -1) sy = "-" + sy;
+
+            string sm = HasKnownMonth() ? m.ToString().PadLeft(2, '0') : "??";
+            string sd = HasKnownDay() ? d.ToString().PadLeft(2, '0') : "??";
 
             string result = string.Format("{0}/{1}/{2}", sy, sm, sd);
-            if (this.IsApproximateDate()) {
+            if (IsApproximateDate()) {
                 result = "~" + result;
-            } else if (this.IsDateBefore()) {
+            } else if (IsDateBefore()) {
                 result = "<" + result;
-            } else if (this.IsDateAfter()) {
+            } else if (IsDateAfter()) {
                 result = ">" + result;
             }
 
@@ -120,7 +128,7 @@ namespace GKCommon
 
         public override int GetHashCode()
         {
-            return (int)this.fValue;
+            return fValue.GetHashCode();
         }
 
         #endregion
@@ -133,7 +141,7 @@ namespace GKCommon
         /// <returns></returns>
         public object Clone()
         {
-            return new UDN(this.fValue);
+            return new UDN(fValue);
         }
 
         #endregion
@@ -148,10 +156,33 @@ namespace GKCommon
         public int CompareTo(object obj)
         {
             if (obj is UDN) {
-                return CompareVal(this.fValue, ((UDN)obj).fValue);
+                return CompareVal(fValue, ((UDN)obj).fValue);
             }
-
             return -1;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
+        public int CompareTo(UDN other)
+        {
+            return CompareVal(fValue, other.fValue);
+        }
+
+        #endregion
+
+        #region IEquatable implementation
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
+        public bool Equals(UDN other)
+        {
+            return (fValue == other.fValue);
         }
 
         #endregion
@@ -168,48 +199,48 @@ namespace GKCommon
         private static int CompareVal(uint l, uint r)
         {
             int result = 0;
-            if (0 == (UDN.IgnoreYear & l))
+            if (0 == (IgnoreYear & l))
             {
-                if (0 == (UDN.IgnoreYear & r))
+                if (0 == (IgnoreYear & r))
                 {
-                    result = Math.Sign(((int) (UDN.ValueMask & l)) - ((int) (UDN.ValueMask & r)));
+                    result = Math.Sign(((int) (ValueMask & l)) - ((int) (ValueMask & r)));
                 }
                 else
                 {
                     result = 1;
                 }
             }
-            else if (0 == (UDN.IgnoreYear & r))
+            else if (0 == (IgnoreYear & r))
             {
                 result = -1;
             }
-            else if (0 == (UDN.IgnoreMonth & l))
+            else if (0 == (IgnoreMonth & l))
             {
-                if (0 == (UDN.IgnoreMonth & r))
+                if (0 == (IgnoreMonth & r))
                 {
-                    result = Math.Sign(((int) (UDN.ValueMask & l)) - ((int) (UDN.ValueMask & r)));
+                    result = Math.Sign(((int) (ValueMask & l)) - ((int) (ValueMask & r)));
                 }
                 else
                 {
                     result = 1;
                 }
             }
-            else if (0 == (UDN.IgnoreMonth & r))
+            else if (0 == (IgnoreMonth & r))
             {
                 result = -1;
             }
-            else if (0 == (UDN.IgnoreDay & l))
+            else if (0 == (IgnoreDay & l))
             {
-                if (0 == (UDN.IgnoreDay & r))
+                if (0 == (IgnoreDay & r))
                 {
-                    result = Math.Sign(((int) (UDN.ValueMask & l)) - ((int) (UDN.ValueMask & r)));
+                    result = Math.Sign(((int) (ValueMask & l)) - ((int) (ValueMask & r)));
                 }
                 else
                 {
                     result = 1;
                 }
             }
-            else if (0 == (UDN.IgnoreDay & r))
+            else if (0 == (IgnoreDay & r))
             {
                 result = -1;
             }
@@ -334,19 +365,19 @@ namespace GKCommon
             switch (calendar)
             {
                 case UDNCalendarType.ctGregorian:
-                    result = (uint)CalendarConverter.gregorian_to_jd(uYear, uMonth, uDay);
+                    result = CalendarConverter.gregorian_to_jd2(uYear, uMonth, uDay); // fixed
                     break;
 
                 case UDNCalendarType.ctJulian:
-                    result = (uint)CalendarConverter.julian_to_jd(uYear, uMonth, uDay);
+                    result = CalendarConverter.julian_to_jd2(uYear, uMonth, uDay); // fixed
                     break;
 
                 case UDNCalendarType.ctHebrew:
-                    result = (uint)CalendarConverter.hebrew_to_jd(uYear, uMonth, uDay);
+                    result = CalendarConverter.hebrew_to_jd3(uYear, uMonth, uDay); // fixed to the 3rd variant
                     break;
 
                 case UDNCalendarType.ctIslamic:
-                    result = (uint)CalendarConverter.islamic_to_jd(uYear, uMonth, uDay);
+                    result = CalendarConverter.islamic_to_jd3(uYear, uMonth, uDay); // fixed to the 3rd variant
                     break;
             }
 
@@ -536,7 +567,7 @@ namespace GKCommon
 
         public bool IsEmpty()
         {
-            return this.fValue == 0;
+            return fValue == 0;
         }
 
         /// <summary>
@@ -545,7 +576,7 @@ namespace GKCommon
         /// <returns></returns>
         public uint GetUnmaskedValue()
         {
-            return (UDN.ValueMask & this.fValue);
+            return (ValueMask & fValue);
         }
     }
 }

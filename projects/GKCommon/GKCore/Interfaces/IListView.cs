@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,8 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-
 namespace GKCore.Interfaces
 {
     /// <summary>
@@ -27,6 +25,6 @@ namespace GKCore.Interfaces
     /// </summary>
     public interface IListView
     {
-        void AddListColumn(string caption, int width, bool autoSize);
+        void AddColumn(string caption, int width, bool autoSize);
     }
 }

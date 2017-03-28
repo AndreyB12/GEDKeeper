@@ -1,13 +1,13 @@
 ﻿/*
- *  An HyperText (readonly) Memo for Delphi
- *    from TJumpMemo by Alexander Kuznetsov (sanhome@hotmail.com)
- *  Copyright (C) 1997 Paul Toth (TothPaul@Mygale.org)
- *  http://www.mygale.org/~tothpaul
+ *  "GEDKeeper", the personal genealogical database editor.
+ *  Copyright (C) 2011, 2017 by Sergey V. Zhdanovskih.
  *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  as published by the Free Software Foundation; either version 2
- *  of the License, or (at your option) any later version.
+ *  This file is part of "GEDKeeper".
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,11 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- *  C# implementation:
- *  Copyright (C) 2011 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 using System;
@@ -36,579 +32,283 @@ namespace GKCommon.Controls
     /// </summary>
     public class HyperView : GKScrollableControl
     {
-        private sealed class HyperLink
-        {
-            private readonly ExtRect fRect;
-
-            public readonly string Name;
-
-            public HyperLink(string name, int x, int y, int w, int h)
-            {
-                this.Name = name;
-                this.fRect = ExtRect.CreateBounds(x, y, w, h);
-            }
-
-            public bool HasCoord(int x, int y, int xOffset, int yOffset)
-            {
-                return x >= this.fRect.Left + xOffset && x <= this.fRect.Right + xOffset
-                    && y >= this.fRect.Top + yOffset && y <= this.fRect.Bottom + yOffset;
-            }
-        }
-
-        /*public enum TRuleStyle
-		{
-			rsLowered,
-			rsRaised
-		}*/
-
-        //private bool fAcceptFontChange;
+        private bool fAcceptFontChange;
         private int fBorderWidth;
-        private Color fColor;
-        private SolidBrush fDefBrush;
-        private int[] fHeights;
+        private List<int> fHeights;
         private Size fTextSize;
         private readonly StringList fLines;
-        private readonly List<HyperLink> fLinks;
-        private int fLink;
+        private TextChunk fCurrentLink;
         private Color fLinkColor;
-        private Font fTextFont;
-        
-        private static readonly object EventLink;
+        private List<TextChunk> fChunks;
 
-        //private TRuleStyle FRuleStyle;
-        //private Color FDwnColor;
-        //private Color FUpColor;
+        private static readonly object EventLink;
 
         static HyperView()
         {
-            HyperView.EventLink = new object();
+            EventLink = new object();
         }
 
         public event LinkEventHandler OnLink
         {
-            add { base.Events.AddHandler(HyperView.EventLink, value); }
-            remove { base.Events.RemoveHandler(HyperView.EventLink, value); }
+            add { Events.AddHandler(EventLink, value); }
+            remove { Events.RemoveHandler(EventLink, value); }
         }
 
         public int BorderWidth
         {
-            get { return this.fBorderWidth; }
-            set { this.SetBorderWidth(value); }
-        }
+            get { return fBorderWidth; }
+            set {
+                if (fBorderWidth == value) return;
 
-        public Color Color
-        {
-            get { return this.fColor; }
-            set { this.SetColor(value); }
+                fBorderWidth = value;
+                Invalidate();
+            }
         }
 
         public StringList Lines
         {
-            get { return this.fLines; }
-            set { this.fLines.Assign(value); }
+            get { return fLines; }
         }
 
         public Color LinkColor
         {
-            get { return this.fLinkColor; }
-            set { this.fLinkColor = value; }
+            get { return fLinkColor; }
+            set { fLinkColor = value; }
         }
 
-        /*public TRuleStyle RuleStyle
-		{
-			get { return this.FRuleStyle; }
-			set { this.SetRuleStyle(value); }
-		}*/
 
         public HyperView() : base()
         {
-            base.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            base.UpdateStyles();
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            UpdateStyles();
 
-            base.BorderStyle = BorderStyle.Fixed3D;
-            base.DoubleBuffered = true;
-            base.TabStop = true;
+            BorderStyle = BorderStyle.Fixed3D;
+            DoubleBuffered = true;
+            TabStop = true;
 
-            //this.fAcceptFontChange = false;
-            this.fLines = new StringList();
-            this.fLines.OnChange += this.LinesChanged;
-            this.fHeights = new int[0];
-            this.fColor = SystemColors.Control;
-            this.fLinks = new List<HyperLink>();
-            this.fLinkColor = Color.Blue;
-            this.fLink = -1;
-            this.fTextSize = Size.Empty;
-
-            //this.FUpColor = Color.Gray;
-            //this.FDwnColor = Color.White;
+            fAcceptFontChange = true;
+            fChunks = new List<TextChunk>();
+            fCurrentLink = null;
+            fHeights = new List<int>();
+            fLines = new StringList();
+            fLines.OnChange += LinesChanged;
+            fLinkColor = Color.Blue;
+            fTextSize = Size.Empty;
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                this.ClearLinks();
-                //this.FLinks.Dispose();
-                this.fHeights = null;
-                this.fLines.Dispose();
-
-                if (fDefBrush != null) fDefBrush.Dispose();
-                if (fTextFont != null) fTextFont.Dispose();
+                fChunks.Clear();
+                fHeights.Clear();
+                fLines.Dispose();
             }
             base.Dispose(disposing);
         }
 
-        private void SetBorderWidth(int value)
-        {
-            if (this.fBorderWidth != value)
-            {
-                this.fBorderWidth = value;
-                base.Invalidate();
-            }
-        }
-
-        private void SetColor(Color value)
-        {
-            if (this.fColor != value)
-            {
-                this.fColor = value;
-                base.Invalidate();
-            }
-        }
-
-        /*private void SetRuleStyle(TRuleStyle value)
-		{
-			if (this.FRuleStyle != value)
-			{
-				this.FRuleStyle = value;
-				if (this.FRuleStyle == TRuleStyle.rsRaised)
-				{
-					this.FUpColor = Color.White;
-					this.FDwnColor = Color.Gray;
-				}
-				else
-				{
-					this.FUpColor = Color.Gray;
-					this.FDwnColor = Color.White;
-				}
-				base.Invalidate();
-			}
-		}*/
-
         private void LinesChanged(object sender)
         {
-            this.AutoScrollPosition = new Point(0, 0);
-            this.ArrangeText();
-        }
-
-        private void ClearLinks()
-        {
-            this.fLinks.Clear();
-        }
-
-        private static int GetFontSize(string s, ref int i)
-        {
-            int result = 0;
-
-            while (true)
-            {
-                char c = s[i];
-                if (c < '0' || c > '9') break;
-
-                i++;
-                result = 10 * result + (int)s[i - 1] - 48;
-            }
-
-            return result;
-        }
-
-        /*private Color GetFontColor(string s, ref int i)
-		{
-			string ss = new string(s[i - 1], 1);
-			while (s[i] != '~')
-			{
-				i++;
-				ss += s[i - 1];
-			}
-			return Color.FromName(ss);
-		}*/
-
-        private void MeasureText(Graphics grx, string ss, ref int xPos, ref int yPos, ref int hMax, ref int xMax)
-        {
-            if (yPos >= -hMax && ss != "") {
-                Size strSize = grx.MeasureString(ss, this.fTextFont).ToSize();
-                xPos += strSize.Width;
-
-                if (xPos > xMax) xMax = xPos;
-                int h = strSize.Height;
-                if (h > hMax) hMax = h;
-            }
-        }
-
-        private void OutText(Graphics gfx, string ss, ref int xPos, ref int yPos, ref int hMax)
-        {
-            if (yPos >= -hMax && ss != "") {
-                gfx.DrawString(ss, this.fTextFont, this.fDefBrush, xPos, yPos);
-
-                Size strSize = gfx.MeasureString(ss, this.fTextFont).ToSize();
-                xPos += strSize.Width;
-            }
+            AutoScrollPosition = new Point(0, 0);
+            ArrangeText();
         }
 
         private void ArrangeText()
         {
-            this.fTextFont = (base.Parent.Font.Clone() as Font);
-            this.fDefBrush = new SolidBrush(Color.Black);
-
-            this.fHeights = new int[this.fLines.Count];
-            //this.fAcceptFontChange = false;
-            Graphics gfx = base.CreateGraphics();
             try
             {
-                this.ClearLinks();
+                fAcceptFontChange = false;
+                fHeights.Clear();
 
-                int yPos = 0;
-                int xMax = 0;
-
-                int num = this.fLines.Count;
-                for (int line = 0; line < num; line++)
+                Graphics gfx = CreateGraphics();
+                try
                 {
                     int xPos = 0;
-                    int lineHeight = gfx.MeasureString("A", this.fTextFont).ToSize().Height;
+                    int yPos = 0;
+                    int xMax = 0;
+                    int lineHeight = 0;
 
-                    string s = this.fLines[line];
+                    string text = fLines.Text;
+                    Font defFont = this.Font;
+                    var parser = new BBTextParser(defFont.SizeInPoints, fLinkColor, ForeColor);
+                    parser.ParseText(fChunks, text);
 
-                    int i = 1;
-                    string ss = "";
-                    while (i <= s.Length)
+                    int line = -1;
+                    int chunksCount = fChunks.Count;
+                    for (int k = 0; k < chunksCount; k++)
                     {
-                        if (s[i - 1] == '~')
-                        {
-                            if (s[i] == '~') {
-                                ss += "~";
+                        TextChunk chunk = fChunks[k];
+
+                        if (line != chunk.Line) {
+                            line = chunk.Line;
+
+                            if (line > 0) {
+                                yPos += lineHeight;
+                                fHeights.Add(lineHeight);
                             }
 
-                            this.MeasureText(gfx, ss, ref xPos, ref yPos, ref lineHeight, ref xMax);
-                            i++;
+                            xPos = 0;
+                            lineHeight = 0;
+                        }
 
-                            while (s[i - 1] != '~')
-                            {
-                                char c = char.ToUpper(s[i - 1]);
+                        if (!string.IsNullOrEmpty(chunk.Text)) {
+                            using (var font = new Font(defFont.Name, chunk.Size, chunk.Style, defFont.Unit)) {
+                                SizeF strSize = gfx.MeasureString(chunk.Text, font);
+                                chunk.Width = (int)strSize.Width;
 
-                                switch (c)
-                                {
-                                    case '+':
-                                        this.SetFontSize((this.fTextFont.Size + GetFontSize(s, ref i)));
-                                        break;
+                                xPos += chunk.Width;
+                                if (xMax < xPos) xMax = xPos;
 
-                                    case '-':
-                                        this.SetFontSize((this.fTextFont.Size - GetFontSize(s, ref i)));
-                                        break;
-
-                                    case '0':
-                                        this.fTextFont = (base.Parent.Font.Clone() as Font);
-                                        break;
-
-                                    case 'B':
-                                        this.SetFontStyle(FontStyle.Bold);
-                                        break;
-
-                                    case 'I':
-                                        this.SetFontStyle(FontStyle.Italic);
-                                        break;
-
-                                    case 'R':
-                                        // dummy
-                                        break;
-
-                                    case 'S':
-                                        this.SetFontStyle(FontStyle.Strikeout);
-                                        break;
-
-                                    case 'U':
-                                        this.SetFontStyle(FontStyle.Underline);
-                                        break;
-
-                                    case '^':
-                                        {
-                                            string sn = "";
-                                            while (s[i] != ':') {
-                                                i++;
-                                                sn += s[i - 1];
-                                            }
-                                            i++;
-                                            ss = "";
-                                            while (s[i] != '~') {
-                                                i++;
-                                                ss += s[i - 1];
-                                            }
-
-                                            int ssWidth = gfx.MeasureString(ss, this.fTextFont).ToSize().Width;
-                                            this.fLinks.Add(new HyperLink(sn, xPos, yPos, ssWidth, lineHeight));
-                                            this.MeasureText(gfx, ss, ref xPos, ref yPos, ref lineHeight, ref xMax);
-
-                                            break;
-                                        }
-
-                                    default:
-                                        while (s[i] != '~') i++;
-                                        break;
-                                }
-
-                                i++;
+                                int h = (int)strSize.Height;
+                                if (lineHeight < h) lineHeight = h;
                             }
-                            ss = "";
                         }
-                        else
-                        {
-                            ss += s[i - 1];
-                        }
-
-                        i++;
                     }
 
-                    this.MeasureText(gfx, ss, ref xPos, ref yPos, ref lineHeight, ref xMax);
-                    yPos += lineHeight;
-                    this.fHeights[line] = lineHeight;
+                    fTextSize = new Size(xMax + 2 * fBorderWidth, yPos + 2 * fBorderWidth);
                 }
-
-                int textWidth = xMax + 2 * this.fBorderWidth;
-                int textHeight = yPos + 2 * this.fBorderWidth;
-                this.fTextSize = new Size(textWidth, textHeight);
+                finally
+                {
+                    gfx.Dispose();
+                    fAcceptFontChange = true;
+                    AdjustViewPort(fTextSize);
+                }
             }
-            finally
+            catch (Exception ex)
             {
-                gfx.Dispose();
-                //this.fAcceptFontChange = true;
+                Logger.LogWrite("HyperView.ArrangeText(): " + ex.Message);
             }
-
-            this.AdjustViewPort(this.fTextSize);
         }
 
         private void DoPaint(Graphics gfx)
         {
-            if (fHeights.Length != fLines.Count) return;
-
-            //this.fAcceptFontChange = false;
             try
             {
-                gfx.FillRectangle(new SolidBrush(SystemColors.Control), base.ClientRectangle);
-
-                int yOffset = this.fBorderWidth - -this.AutoScrollPosition.Y;
-
-                int num = this.fLines.Count;
-                for (int line = 0; line < num; line++)
+                fAcceptFontChange = false;
+                try
                 {
-                    int xOffset = this.fBorderWidth - -this.AutoScrollPosition.X;
-                    int lineHeight = this.fHeights[line];
+                    Rectangle clientRect = ClientRectangle;
+                    gfx.FillRectangle(new SolidBrush(BackColor), clientRect);
+                    Font defFont = this.Font;
 
-                    string s = this.fLines[line];
+                    int xOffset = fBorderWidth - -AutoScrollPosition.X;
+                    int yOffset = fBorderWidth - -AutoScrollPosition.Y;
+                    int lineHeight = 0;
 
-                    int i = 1;
-                    string ss = "";
-                    while (i <= s.Length)
+                    int line = -1;
+                    int chunksCount = fChunks.Count;
+                    for (int k = 0; k < chunksCount; k++)
                     {
-                        if (s[i - 1] == '~')
-                        {
-                            if (s[i] == '~') {
-                                ss += "~";
+                        TextChunk chunk = fChunks[k];
+
+                        if (line != chunk.Line) {
+                            line = chunk.Line;
+
+                            xOffset = fBorderWidth - -AutoScrollPosition.X;
+                            yOffset += lineHeight;
+
+                            // this condition is dirty hack
+                            if (line >= 0 && line < fHeights.Count) {
+                                lineHeight = fHeights[line];
                             }
+                        }
 
-                            this.OutText(gfx, ss, ref xOffset, ref yOffset, ref lineHeight);
-                            i++;
+                        int prevX = xOffset;
+                        int prevY = yOffset;
 
-                            while (s[i - 1] != '~')
-                            {
-                                char c = char.ToUpper(s[i - 1]);
-
-                                switch (c)
-                                {
-                                    case '+':
-                                        this.SetFontSize((this.fTextFont.Size + GetFontSize(s, ref i)));
-                                        break;
-
-                                    case '-':
-                                        this.SetFontSize((this.fTextFont.Size - GetFontSize(s, ref i)));
-                                        break;
-
-                                    case '0':
-                                        this.fTextFont = (base.Parent.Font.Clone() as Font);
-                                        break;
-
-                                    case 'B':
-                                        this.SetFontStyle(FontStyle.Bold);
-                                        break;
-
-                                    case 'I':
-                                        this.SetFontStyle(FontStyle.Italic);
-                                        break;
-
-                                    case 'R':
-                                        // need to realize
-                                        break;
-
-                                    case 'S':
-                                        this.SetFontStyle(FontStyle.Strikeout);
-                                        break;
-
-                                    case 'U':
-                                        this.SetFontStyle(FontStyle.Underline);
-                                        break;
-
-                                    case '^':
-                                        {
-                                            string sn = "";
-                                            while (s[i] != ':') {
-                                                i++;
-                                                sn += s[i - 1];
-                                            }
-                                            i++;
-                                            ss = "";
-                                            while (s[i] != '~') {
-                                                i++;
-                                                ss += s[i - 1];
-                                            }
-
-                                            Color saveColor = this.fDefBrush.Color;
-                                            this.fDefBrush.Color = this.fLinkColor;
-                                            this.SetFontStyle(FontStyle.Underline);
-
-                                            this.OutText(gfx, ss, ref xOffset, ref yOffset, ref lineHeight);
-
-                                            this.fDefBrush.Color = saveColor;
-                                            this.SetFontStyle(FontStyle.Underline);
-
-                                            break;
-                                        }
-
-                                    default:
-                                        while (s[i] != '~') i++;
-                                        break;
+                        string ct = chunk.Text;
+                        if (!string.IsNullOrEmpty(ct)) {
+                            using (var brush = new SolidBrush(chunk.Color)) {
+                                using (var font = new Font(defFont.Name, chunk.Size, chunk.Style, defFont.Unit)) {
+                                    gfx.DrawString(ct, font, brush, xOffset, yOffset);
                                 }
-
-                                i++;
                             }
-                            ss = "";
-                        }
-                        else
-                        {
-                            ss += s[i - 1];
-                        }
 
-                        i++;
+                            xOffset += chunk.Width;
+
+                            if (!string.IsNullOrEmpty(chunk.URL)) {
+                                chunk.LinkRect = ExtRect.CreateBounds(prevX, prevY, xOffset - prevX, lineHeight);
+                            }
+                        }
                     }
-
-                    this.OutText(gfx, ss, ref xOffset, ref yOffset, ref lineHeight);
-                    yOffset += lineHeight;
+                }
+                finally
+                {
+                    fAcceptFontChange = true;
                 }
             }
-            finally
+            catch (Exception ex)
             {
-                //this.fAcceptFontChange = true;
+                Logger.LogWrite("HyperView.DoPaint(): " + ex.Message);
             }
-        }
-
-        private void SetFontSize(float size)
-        {
-            this.fTextFont = new Font(this.fTextFont.Name, size, this.fTextFont.Style, this.fTextFont.Unit, this.fTextFont.GdiCharSet, this.fTextFont.GdiVerticalFont);
-        }
-
-        private void SetFontStyle(FontStyle style)
-        {
-            FontStyle fontStyle = this.fTextFont.Style;
-            if ((fontStyle & style) == FontStyle.Regular)
-            {
-                fontStyle |= style;
-            }
-            else
-            {
-                fontStyle &= ~style;
-            }
-            this.fTextFont = new Font(this.fTextFont, fontStyle);
-        }
-
-        private void GotoLink(int linkIndex)
-        {
-            HyperLink hLink = this.fLinks[linkIndex];
-            string lnk = "~@" + hLink.Name + "~";
-            int h = this.fBorderWidth;
-
-            int num = this.fLines.Count;
-            for (int j = 0; j < num; j++) {
-                if (this.fLines[j].IndexOf(lnk) >= 0) {
-                    this.AutoScrollPosition = new Point(0, h);
-                    //this.ScrollTo(0, h);
-                    return;
-                }
-
-                h += this.fHeights[j];
-            }
-
-            this.DoLink(hLink.Name);
         }
 
         private void DoLink(string linkName)
         {
-            LinkEventHandler eventHandler = (LinkEventHandler)base.Events[HyperView.EventLink];
-            if (eventHandler == null) return;
-
-            eventHandler(this, linkName);
+            LinkEventHandler eventHandler = (LinkEventHandler)Events[EventLink];
+            if (eventHandler != null) eventHandler(this, linkName);
         }
 
         #region Protected methods
 
         protected override void OnFontChanged(EventArgs e)
         {
-            this.ArrangeText();
+            if (fAcceptFontChange) {
+                ArrangeText();
+            }
+
             base.OnFontChanged(e);
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
-            base.OnKeyDown(e);
-
             switch (e.KeyCode)
             {
                 case Keys.Prior:
-                    this.AdjustScroll(0, -this.VerticalScroll.LargeChange);
+                    AdjustScroll(0, -VerticalScroll.LargeChange);
                     break;
 
                 case Keys.Next:
-                    this.AdjustScroll(0, this.VerticalScroll.LargeChange);
+                    AdjustScroll(0, VerticalScroll.LargeChange);
                     break;
 
                 case Keys.Home:
-                    this.AdjustScroll(-this.HorizontalScroll.Maximum, -this.VerticalScroll.Maximum);
+                    AdjustScroll(-HorizontalScroll.Maximum, -VerticalScroll.Maximum);
                     break;
 
                 case Keys.End:
-                    this.AdjustScroll(-this.HorizontalScroll.Maximum, this.VerticalScroll.Maximum);
+                    AdjustScroll(-HorizontalScroll.Maximum, VerticalScroll.Maximum);
                     break;
 
                 case Keys.Left:
-                    this.AdjustScroll(-(e.Modifiers == Keys.None ? this.HorizontalScroll.SmallChange : this.HorizontalScroll.LargeChange), 0);
+                    AdjustScroll(-(e.Modifiers == Keys.None ? HorizontalScroll.SmallChange : HorizontalScroll.LargeChange), 0);
                     break;
 
                 case Keys.Right:
-                    this.AdjustScroll(e.Modifiers == Keys.None ? this.HorizontalScroll.SmallChange : this.HorizontalScroll.LargeChange, 0);
+                    AdjustScroll(e.Modifiers == Keys.None ? HorizontalScroll.SmallChange : HorizontalScroll.LargeChange, 0);
                     break;
 
                 case Keys.Up:
-                    this.AdjustScroll(0, -(e.Modifiers == Keys.None ? this.VerticalScroll.SmallChange : this.VerticalScroll.LargeChange));
+                    AdjustScroll(0, -(e.Modifiers == Keys.None ? VerticalScroll.SmallChange : VerticalScroll.LargeChange));
                     break;
 
                 case Keys.Down:
-                    this.AdjustScroll(0, e.Modifiers == Keys.None ? this.VerticalScroll.SmallChange : this.VerticalScroll.LargeChange);
+                    AdjustScroll(0, e.Modifiers == Keys.None ? VerticalScroll.SmallChange : VerticalScroll.LargeChange);
                     break;
             }
+
+            base.OnKeyDown(e);
         }
 
         protected override bool IsInputKey(Keys keyData)
         {
             bool result;
 
-            if ((keyData & Keys.Right) == Keys.Right | (keyData & Keys.Left) == Keys.Left | (keyData & Keys.Up) == Keys.Up | (keyData & Keys.Down) == Keys.Down
-                | (keyData & Keys.Prior) == Keys.Prior | (keyData & Keys.Next) == Keys.Next | (keyData & Keys.End) == Keys.End | (keyData & Keys.Home) == Keys.Home)
+            if ((keyData & Keys.Right) == Keys.Right || (keyData & Keys.Left) == Keys.Left ||
+                (keyData & Keys.Up) == Keys.Up || (keyData & Keys.Down) == Keys.Down ||
+                (keyData & Keys.Prior) == Keys.Prior || (keyData & Keys.Next) == Keys.Next ||
+                (keyData & Keys.End) == Keys.End || (keyData & Keys.Home) == Keys.Home)
                 result = true;
             else
                 result = base.IsInputKey(keyData);
@@ -620,37 +320,37 @@ namespace GKCommon.Controls
         {
             base.OnMouseDown(e);
 
-            if (this.fLink >= 0) this.GotoLink(this.fLink);
+            if (fCurrentLink != null) DoLink(fCurrentLink.URL);
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
 
-            int yOffset = (this.fBorderWidth - -this.AutoScrollPosition.Y);
-            int xOffset = (this.fBorderWidth - -this.AutoScrollPosition.X);
-            
-            int num = this.fLinks.Count;
+            int xOffset = (fBorderWidth - -AutoScrollPosition.X);
+            int yOffset = (fBorderWidth - -AutoScrollPosition.Y);
+            fCurrentLink = null;
+
+            int num = fChunks.Count;
             for (int i = 0; i < num; i++)
             {
-                if (this.fLinks[i].HasCoord(e.X, e.Y, xOffset, yOffset))
+                TextChunk chunk = fChunks[i];
+                if (string.IsNullOrEmpty(chunk.URL)) continue;
+
+                if (chunk.HasCoord(e.X, e.Y, xOffset, yOffset))
                 {
-                    this.fLink = i;
-                    this.Cursor = Cursors.Hand;
-                    return;
+                    fCurrentLink = chunk;
+                    break;
                 }
             }
 
-            if (this.fLink >= 0)
-            {
-                this.Cursor = Cursors.Default;
-                this.fLink = -1;
-            }
+            Cursor = (fCurrentLink == null) ? Cursors.Default : Cursors.Hand;
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            this.DoPaint(e.Graphics);
+            DoPaint(e.Graphics);
+            base.OnPaint(e);
         }
 
         #endregion

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -22,17 +22,18 @@ using System;
 using System.Windows.Forms;
 
 using GKCommon;
+using GKCommon.Controls;
 using GKCommon.GEDCOM;
 using GKCore;
 using GKCore.Interfaces;
-using GKUI.Controls;
+using GKUI.Sheets;
 
 namespace GKUI
 {
     /// <summary>
     /// 
     /// </summary>
-    public partial class OrganizerWin : Form
+    public sealed partial class OrganizerWin : Form
     {
         private readonly IBaseWindow fBase;
         private readonly GKSheetList fAdrList;
@@ -40,73 +41,73 @@ namespace GKUI
         private readonly GKSheetList fMailsList;
         private readonly GKSheetList fWebsList;
 
-        public OrganizerWin(IBaseWindow aBase)
+        public OrganizerWin(IBaseWindow baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.fBase = aBase;
+            fBase = baseWin;
             
-            this.fAdrList = new GKSheetList(this.pageAddresses);
-            this.fAdrList.Buttons = EnumSet<SheetButton>.Create();
-            this.fAdrList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
-            this.fAdrList.AddColumn(LangMan.LS(LSID.LSID_Address), 100, false);
+            fAdrList = new GKSheetList(pageAddresses);
+            fAdrList.Buttons = EnumSet<SheetButton>.Create();
+            fAdrList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
+            fAdrList.AddColumn(LangMan.LS(LSID.LSID_Address), 100, false);
             
-            this.fPhonesList = new GKSheetList(this.pageTelephones);
-            this.fPhonesList.Buttons = EnumSet<SheetButton>.Create();
-            this.fPhonesList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
-            this.fPhonesList.AddColumn(LangMan.LS(LSID.LSID_Telephone), 100, false);
+            fPhonesList = new GKSheetList(pageTelephones);
+            fPhonesList.Buttons = EnumSet<SheetButton>.Create();
+            fPhonesList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
+            fPhonesList.AddColumn(LangMan.LS(LSID.LSID_Telephone), 100, false);
             
-            this.fMailsList = new GKSheetList(this.pageMails);
-            this.fMailsList.Buttons = EnumSet<SheetButton>.Create();
-            this.fMailsList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
-            this.fMailsList.AddColumn(LangMan.LS(LSID.LSID_Mail), 100, false);
+            fMailsList = new GKSheetList(pageMails);
+            fMailsList.Buttons = EnumSet<SheetButton>.Create();
+            fMailsList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
+            fMailsList.AddColumn(LangMan.LS(LSID.LSID_Mail), 100, false);
             
-            this.fWebsList = new GKSheetList(this.pageWebs);
-            this.fWebsList.Buttons = EnumSet<SheetButton>.Create();
-            this.fWebsList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
-            this.fWebsList.AddColumn(LangMan.LS(LSID.LSID_WebSite), 100, false);
+            fWebsList = new GKSheetList(pageWebs);
+            fWebsList.Buttons = EnumSet<SheetButton>.Create();
+            fWebsList.AddColumn(LangMan.LS(LSID.LSID_Person), 350, false);
+            fWebsList.AddColumn(LangMan.LS(LSID.LSID_WebSite), 100, false);
             
-            this.Text = LangMan.LS(LSID.LSID_MIOrganizer);
-            this.pageAddresses.Text = LangMan.LS(LSID.LSID_Addresses);
-            this.pageTelephones.Text = LangMan.LS(LSID.LSID_Telephones);
-            this.pageMails.Text = LangMan.LS(LSID.LSID_Mails);
-            this.pageWebs.Text = LangMan.LS(LSID.LSID_Webs);
+            Text = LangMan.LS(LSID.LSID_MIOrganizer);
+            pageAddresses.Text = LangMan.LS(LSID.LSID_Addresses);
+            pageTelephones.Text = LangMan.LS(LSID.LSID_Telephones);
+            pageMails.Text = LangMan.LS(LSID.LSID_Mails);
+            pageWebs.Text = LangMan.LS(LSID.LSID_Webs);
         }
 
         private void OrganizerWin_Load(object sender, EventArgs e)
         {
-            this.CollectData();
+            CollectData();
         }
 
         private void CollectData()
         {
-            this.fAdrList.ClearItems();
-            this.fPhonesList.ClearItems();
-            this.fMailsList.ClearItems();
-            this.fWebsList.ClearItems();
+            fAdrList.ClearItems();
+            fPhonesList.ClearItems();
+            fMailsList.ClearItems();
+            fWebsList.ClearItems();
 
-            int num = this.fBase.Tree.RecordsCount;
+            int num = fBase.Tree.RecordsCount;
             for (int i = 0; i < num; i++)
             {
-                GEDCOMRecord rec = this.fBase.Tree[i];
+                GEDCOMRecord rec = fBase.Tree[i];
                 if (rec.RecordType != GEDCOMRecordType.rtIndividual) continue;
 
                 GEDCOMIndividualRecord iRec = (GEDCOMIndividualRecord)rec;
-                string nm = iRec.GetNameString(true, false);
+                string nm = GKUtils.GetNameString(iRec, true, false);
 
                 foreach (GEDCOMCustomEvent evt in iRec.Events) {
-                    this.PrepareEvent(nm, evt);
+                    PrepareEvent(nm, evt);
                 }
             }
 
-            this.fAdrList.ResizeColumn(0);
-            this.fAdrList.ResizeColumn(1);
-            this.fPhonesList.ResizeColumn(0);
-            this.fPhonesList.ResizeColumn(1);
-            this.fMailsList.ResizeColumn(0);
-            this.fMailsList.ResizeColumn(1);
-            this.fWebsList.ResizeColumn(0);
-            this.fWebsList.ResizeColumn(1);
+            fAdrList.ResizeColumn(0);
+            fAdrList.ResizeColumn(1);
+            fPhonesList.ResizeColumn(0);
+            fPhonesList.ResizeColumn(1);
+            fMailsList.ResizeColumn(0);
+            fMailsList.ResizeColumn(1);
+            fWebsList.ResizeColumn(0);
+            fWebsList.ResizeColumn(1);
         }
 
         private static void AddItem(GKSheetList list, string name, string value)
@@ -117,24 +118,24 @@ namespace GKUI
 
         private void PrepareEvent(string iName, GEDCOMCustomEvent ev)
         {
-            GEDCOMAddress addr = ev.Detail.Address;
+            GEDCOMAddress addr = ev.Address;
             if (addr == null) return;
             
             string addrStr = addr.Address.Text.Trim();
             if (addrStr != "") {
-                AddItem(this.fAdrList, iName, addrStr);
+                AddItem(fAdrList, iName, addrStr);
             }
 
             foreach (GEDCOMTag tag in addr.PhoneNumbers) {
-                AddItem(this.fPhonesList, iName, tag.StringValue);
+                AddItem(fPhonesList, iName, tag.StringValue);
             }
 
             foreach (GEDCOMTag tag in addr.EmailAddresses) {
-                AddItem(this.fMailsList, iName, tag.StringValue);
+                AddItem(fMailsList, iName, tag.StringValue);
             }
 
             foreach (GEDCOMTag tag in addr.WebPages) {
-                AddItem(this.fWebsList, iName, tag.StringValue);
+                AddItem(fWebsList, iName, tag.StringValue);
             }
         }
 
@@ -143,7 +144,7 @@ namespace GKUI
             switch (e.KeyCode)
             {
                 case Keys.Escape:
-                    base.Close();
+                    Close();
                     break;
             }
         }

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -30,56 +30,68 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class NoteEditDlg : Form, IBaseEditor
+    public sealed partial class NoteEditDlg : Form, IBaseEditor
     {
         private readonly IBaseWindow fBase;
         private GEDCOMNoteRecord fNoteRecord;
 
         public GEDCOMNoteRecord NoteRecord
         {
-            get { return this.fNoteRecord; }
-            set { this.SetNoteRecord(value); }
+            get { return fNoteRecord; }
+            set { SetNoteRecord(value); }
         }
 
         public IBaseWindow Base
         {
-            get { return this.fBase; }
+            get { return fBase; }
         }
 
         private void SetNoteRecord(GEDCOMNoteRecord value)
         {
-            this.fNoteRecord = value;
-            this.txtNote.Text = this.fNoteRecord.Note.Text.Trim();
+            fNoteRecord = value;
+            txtNote.Text = fNoteRecord.Note.Text.Trim();
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                this.fNoteRecord.SetNotesArray(this.txtNote.Lines);
-                this.fBase.ChangeRecord(this.fNoteRecord);
-                base.DialogResult = DialogResult.OK;
+                int length = 0;
+                for (int it = 0; txtNote.Lines.Length > it; ++it)
+                {
+                    length += txtNote.Lines[it].Trim().Length;
+                }
+                if (0 != length)
+                {
+                    fNoteRecord.SetNotesArray(txtNote.Lines);
+                    fBase.ChangeRecord(fNoteRecord);
+                    DialogResult = DialogResult.OK;
+                }
+                else
+                {
+                    DialogResult = DialogResult.Cancel;
+                }
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("NoteEditDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("NoteEditDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
             }
         }
 
-        public NoteEditDlg(IBaseWindow aBase)
+        public NoteEditDlg(IBaseWindow baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fBase = aBase;
+            fBase = baseWin;
 
             // SetLang()
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.Text = LangMan.LS(LSID.LSID_Note);
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            Text = LangMan.LS(LSID.LSID_Note);
         }
     }
 }

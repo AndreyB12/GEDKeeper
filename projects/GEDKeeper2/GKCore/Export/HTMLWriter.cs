@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -36,37 +35,37 @@ namespace GKCore.Export
 
         public HTMLWriter()
         {
-            this.fStyles = new Dictionary<string, string>();
+            fStyles = new Dictionary<string, string>();
         }
 
         public override void beginWrite()
         {
-            this.fStream = new StreamWriter(new FileStream(this.fFileName, FileMode.Create), Encoding.UTF8);
+            fStream = new StreamWriter(new FileStream(fFileName, FileMode.Create), Encoding.UTF8);
 
-            this.fStream.WriteLine("<html>");
-            this.fStream.WriteLine("<head>");
-            this.fStream.WriteLine("<meta HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=utf-8\">");
-            this.fStream.WriteLine("<link rel=\"stylesheet\" href=\"style.css\" type=\"text/css\"/>");
-            this.fStream.WriteLine("<title>" + this.fDocumentTitle + "</title>");
+            fStream.WriteLine("<html>");
+            fStream.WriteLine("<head>");
+            fStream.WriteLine("<meta HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=utf-8\">");
+            fStream.WriteLine("<link rel=\"stylesheet\" href=\"style.css\" type=\"text/css\"/>");
+            fStream.WriteLine("<title>" + fDocumentTitle + "</title>");
 
-            this.fStream.WriteLine("<style type=\"text/css\">");
-            foreach (KeyValuePair<string, string> entry in this.fStyles)
+            fStream.WriteLine("<style type=\"text/css\">");
+            foreach (KeyValuePair<string, string> entry in fStyles)
             {
-                this.fStream.WriteLine("." + entry.Key + " { " + entry.Value + " }");
+                fStream.WriteLine("." + entry.Key + " { " + entry.Value + " }");
             }
-            this.fStream.WriteLine("</style>");
+            fStream.WriteLine("</style>");
 
-            this.fStream.WriteLine("</head>");
-            this.fStream.WriteLine("<body>");
+            fStream.WriteLine("</head>");
+            fStream.WriteLine("<body>");
         }
 
         public override void endWrite()
         {
-            this.fStream.WriteLine("</body>");
-            this.fStream.WriteLine("</html>");
+            fStream.WriteLine("</body>");
+            fStream.WriteLine("</html>");
 
-            this.fStream.Flush();
-            this.fStream.Close();
+            fStream.Flush();
+            fStream.Close();
         }
 
         public override void addParagraph(string text, object font, TextAlignment alignment)
@@ -89,7 +88,7 @@ namespace GKCore.Export
             fStream.WriteLine("<p class=\""+font+"\"><a href=\"#"+link+"\">"+text+"</a></p>");
         }
 
-        public override object createFont(string name, float size, bool bold, bool underline, Color color)
+        public override object CreateFont(string name, float size, bool bold, bool underline, Color color)
         {
             string style;
             
@@ -99,9 +98,9 @@ namespace GKCore.Export
             if (bold) style += "; font-weight: bold";
             if (underline) style += "; text-decoration: underline";
             
-            int index = this.fStyles.Count;
+            int index = fStyles.Count;
             string key = "style_" + index;
-            this.fStyles.Add(key, style);
+            fStyles.Add(key, style);
 
             return key;
         }
@@ -156,6 +155,11 @@ namespace GKCore.Export
             if (sup) fStream.WriteLine("<sup>");
             fStream.WriteLine("<a href=\"#"+link+"\">"+text+"</a>");
             if (sup) fStream.WriteLine("</sup>");
+        }
+
+        public override void addNote(string text, object font)
+        {
+            
         }
     }
 }

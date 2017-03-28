@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -23,7 +23,7 @@ using GKCommon.GEDCOM;
 namespace GKCore.Types
 {
     /// <summary>
-    /// Description of NameEntry.
+    /// Entry of auto-updated book of names.
     /// </summary>
     public class NameEntry
     {

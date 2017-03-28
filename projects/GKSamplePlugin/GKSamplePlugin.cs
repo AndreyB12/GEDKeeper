@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,11 +25,11 @@ using System.Runtime.InteropServices;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKSamplePlugin1")]
-[assembly: AssemblyDescription("GEDKeeper2 sample plugin")]
+[assembly: AssemblyDescription("GEDKeeper sample plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -52,56 +52,56 @@ namespace GKSamplePlugin
 
         public void Execute()
         {
-            PluginForm frm = new PluginForm(this);
-            frm.ShowDialog();
+            using (PluginForm frm = new PluginForm(this)) {
+                frm.ShowDialog();
+            }
         }
 
         public void OnHostClosing(ref bool cancelClosing) {}
-		public void OnHostActivate() {}
-		public void OnHostDeactivate() {}
+        public void OnHostActivate() {}
+        public void OnHostDeactivate() {}
 
-		public void OnLanguageChange()
+        public void OnLanguageChange()
         {
-        	try
-        	{
-        		this.fLangMan = this.fHost.CreateLangMan(this);
-        	}
-        	catch (Exception ex)
-        	{
-        		fHost.LogWrite("GKSamplePlugin1.OnLanguageChange(): " + ex.Message);
-        	}
+            try
+            {
+                fLangMan = fHost.CreateLangMan(this);
+            }
+            catch (Exception ex)
+            {
+                fHost.LogWrite("GKSamplePlugin1.OnLanguageChange(): " + ex.Message);
+            }
         }
-        
+
         public bool Startup(IHost host)
         {
-        	bool result = true;
-        	try
-        	{
-        		this.fHost = host;
-        		// Implement any startup code here
-        	}
-        	catch (Exception ex)
-        	{
-        		fHost.LogWrite("GKSamplePlugin1.Startup(): " + ex.Message);
-        		result = false;
-        	}
-        	return result;
+            bool result = true;
+            try
+            {
+                fHost = host;
+                // Implement any startup code here
+            }
+            catch (Exception ex)
+            {
+                fHost.LogWrite("GKSamplePlugin1.Startup(): " + ex.Message);
+                result = false;
+            }
+            return result;
         }
 
         public bool Shutdown()
         {
-        	bool result = true;
-        	try
-        	{
-        		// Implement any shutdown code here
-        	}
-        	catch (Exception ex)
-        	{
-        		fHost.LogWrite("GKSamplePlugin1.Shutdown(): " + ex.Message);
-        		result = false;
-        	}
-        	return result;
+            bool result = true;
+            try
+            {
+                // Implement any shutdown code here
+            }
+            catch (Exception ex)
+            {
+                fHost.LogWrite("GKSamplePlugin1.Shutdown(): " + ex.Message);
+                result = false;
+            }
+            return result;
         }
-
     }
 }

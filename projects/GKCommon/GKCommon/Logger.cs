@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -26,20 +26,23 @@ namespace GKCommon
 {
     public static class Logger
     {
-        private static string LogFilename;
+        private static string fLogFilename;
 
         public static void LogInit(string fileName)
         {
-            LogFilename = fileName;
+            fLogFilename = fileName;
         }
 
         public static void LogWrite(string msg)
         {
-            using (StreamWriter Log = new StreamWriter(LogFilename, true, Encoding.UTF8))
-            {
-                Log.WriteLine("[" + DateTime.Now.ToString() + "] -> " + msg);
-                Log.Flush();
-                Log.Close();
+            try {
+                using (StreamWriter log = new StreamWriter(fLogFilename, true, Encoding.UTF8))
+                {
+                    log.WriteLine("[" + DateTime.Now.ToString() + "] -> " + msg);
+                    log.Flush();
+                    log.Close();
+                }
+            } catch (Exception ex) {
             }
         }
     }

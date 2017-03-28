@@ -1,6 +1,6 @@
 ﻿## GEDKeeper contributors
 
-* **[Serg V. Zhdanovskih](https://github.com/serg-norseman)**
+* **[Sergey Zhdanovskih](https://github.com/serg-norseman)**
 
   * Lead developer, maintainer
 
@@ -10,6 +10,13 @@
   * UDN format and sorter
   * Makefiles
   * Debugging and bug reports
+  * Improvements of charts drawing and printing
+
+* **[Igor Tyulyakov](https://github.com/g10101k)**
+
+  * Debugging and bug reports
+  * Improvement of UI features
+  * Design solutions (MediaPlayer and portraits)
 
 
 ## External components
@@ -53,13 +60,6 @@ ExpCalculator
     (C) 2011 by Serg V. Zhdanovskih  (fork to C#)
 
 
-HyperText Memo for Delphi
-    Licensed under GPLv2.
-    (C) Alexander Kuznetsov
-    (C) 1997 Paul Toth <http://www.mygale.org/~tothpaul/>
-    (C) 2011 Serg V. Zhdanovskih (fork to C#).
-
-
 IniFiles
     Licensed under The Code Project Open License (CPOL).
     (C) 2007 Gajatko
@@ -72,7 +72,7 @@ iTextSharp
 
 
 Life
-    Licensed under <something similar to zlib License>.
+    Licensed under (something similar to zlib License).
     (C) 1998 Ian Lane
     (C) 2011 Serg V. Zhdanovskih (fork to C#)
     https://github.com/Serg-Norseman/ConwayLifeGame
@@ -88,6 +88,12 @@ CsGL for OpenGL
     (C) 2001, Lloyd Dupont <lloyd@galador.net>
 
 
+nVLC
+    Licensed under GPLv3
+    (C) Roman Ginzburg, http://www.codeproject.com/Articles/109639/nVLC
+    (C) fork Sergey Zhdanovskih, https://github.com/serg-norseman/nVLC
+
+
 SingleInstance
     Licensed under The Code Project Open License (CPOL).
     (C) 2007 Shy Agam
@@ -95,13 +101,8 @@ SingleInstance
 
 
 StringTokenizer
-    Licensed under <something similar to zlib License>.
+    Licensed under (something similar to zlib License).
     (C) 2004 Andrew Deren
-
-
-SysInfo (was ...)
-    (C) 2003-2016 Dominik Reichl
-    Licensed under GPLv2.
 
 
 TimSort
@@ -124,4 +125,10 @@ ZipStorer
     (C) 2010 Jaime Olivares
     https://zipstorer.codeplex.com
     https://github.com/jaime-olivares/zipstorer
+
+
+YamlSerializer
+    Licensed under The MIT License (MIT).
+    (C) Osamu TAKEUCHI, https://yamlserializer.codeplex.com/
+    (C) fork Sergey Zhdanovskih, https://github.com/serg-norseman/YamlSerializer
 ```

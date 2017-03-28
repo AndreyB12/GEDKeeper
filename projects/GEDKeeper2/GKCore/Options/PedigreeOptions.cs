@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,6 +20,7 @@
 
 using System;
 using GKCommon;
+using GKCore.Interfaces;
 using GKCore.Types;
 
 namespace GKCore.Options
@@ -38,7 +39,7 @@ namespace GKCore.Options
     /// <summary>
     /// 
     /// </summary>
-    public sealed class PedigreeOptions : BaseObject
+    public sealed class PedigreeOptions : BaseObject, IOptions
     {
         public PedigreeFormat Format;
         public bool IncludeAttributes;
@@ -48,25 +49,36 @@ namespace GKCore.Options
 
         public PedigreeOptions()
         {
-            this.IncludeAttributes = true;
-            this.IncludeNotes = true;
-            this.IncludeSources = true;
-            this.IncludeGenerations = true;
+            IncludeAttributes = true;
+            IncludeNotes = true;
+            IncludeSources = true;
+            IncludeGenerations = true;
+        }
+
+        public void Assign(IOptions source)
+        {
+            PedigreeOptions srcOptions = source as PedigreeOptions;
+            if (srcOptions == null) return;
+
+            Format = srcOptions.Format;
+            IncludeAttributes = srcOptions.IncludeAttributes;
+            IncludeNotes = srcOptions.IncludeNotes;
+            IncludeSources = srcOptions.IncludeSources;
+            IncludeGenerations = srcOptions.IncludeGenerations;
         }
 
         public void LoadFromFile(IniFile iniFile)
         {
-            if (iniFile == null) {
+            if (iniFile == null)
                 throw new ArgumentNullException("iniFile");
-            }
 
             try
             {
-                this.IncludeAttributes = iniFile.ReadBool("Pedigree", "IncludeAttributes", true);
-                this.IncludeNotes = iniFile.ReadBool("Pedigree", "IncludeNotes", true);
-                this.IncludeSources = iniFile.ReadBool("Pedigree", "IncludeSources", true);
-                this.Format = (PedigreeFormat)iniFile.ReadInteger("Pedigree", "Format", 0);
-                this.IncludeGenerations = iniFile.ReadBool("Pedigree", "IncludeGenerations", true);
+                Format = (PedigreeFormat)iniFile.ReadInteger("Pedigree", "Format", 0);
+                IncludeAttributes = iniFile.ReadBool("Pedigree", "IncludeAttributes", true);
+                IncludeNotes = iniFile.ReadBool("Pedigree", "IncludeNotes", true);
+                IncludeSources = iniFile.ReadBool("Pedigree", "IncludeSources", true);
+                IncludeGenerations = iniFile.ReadBool("Pedigree", "IncludeGenerations", true);
             }
             catch (Exception)
             {
@@ -76,15 +88,14 @@ namespace GKCore.Options
 
         public void SaveToFile(IniFile iniFile)
         {
-            if (iniFile == null) {
+            if (iniFile == null)
                 throw new ArgumentNullException("iniFile");
-            }
 
-            iniFile.WriteBool("Pedigree", "IncludeAttributes", this.IncludeAttributes);
-            iniFile.WriteBool("Pedigree", "IncludeNotes", this.IncludeNotes);
-            iniFile.WriteBool("Pedigree", "IncludeSources", this.IncludeSources);
-            iniFile.WriteInteger("Pedigree", "Format", (sbyte)this.Format);
-            iniFile.WriteBool("Pedigree", "IncludeGenerations", this.IncludeGenerations);
+            iniFile.WriteInteger("Pedigree", "Format", (sbyte)Format);
+            iniFile.WriteBool("Pedigree", "IncludeAttributes", IncludeAttributes);
+            iniFile.WriteBool("Pedigree", "IncludeNotes", IncludeNotes);
+            iniFile.WriteBool("Pedigree", "IncludeSources", IncludeSources);
+            iniFile.WriteBool("Pedigree", "IncludeGenerations", IncludeGenerations);
         }
     }
 }

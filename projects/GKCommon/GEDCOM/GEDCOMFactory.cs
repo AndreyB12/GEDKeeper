@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -35,7 +35,7 @@ namespace GKCommon.GEDCOM
 
         public GEDCOMFactory()
         {
-            this.fConstructors = new Dictionary<string, TagConstructor>();
+            fConstructors = new Dictionary<string, TagConstructor>();
         }
 
         public void RegisterTag(string key, TagConstructor constructor)

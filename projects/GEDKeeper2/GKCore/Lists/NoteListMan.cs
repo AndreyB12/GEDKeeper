@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,8 +29,8 @@ namespace GKCore.Lists
     /// </summary>
     public enum NoteColumnType
     {
-        nctText,
-        nctChangeDate
+        ctText,
+        ctChangeDate
     }
 
     /// <summary>
@@ -41,13 +40,8 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_Note, DataType.dtString, 400, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public NoteListColumns() : base()
-        {
-            InitData(typeof(NoteColumnType));
+            AddColumn(LSID.LSID_Note, DataType.dtString, 400, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -58,49 +52,40 @@ namespace GKCore.Lists
     {
         private GEDCOMNoteRecord fRec;
 
+        public NoteListMan(GEDCOMTree tree) : base(tree, new NoteListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(this.fRec.Note.Text, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fRec.Note.Text, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMNoteRecord);
+            fRec = (aRec as GEDCOMNoteRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    {
-                        string st;
-                        if (this.fRec.Note.Count > 0)
-                        {
-                            st = this.fRec.Note[0].Trim();
-                            if (st == "" && this.fRec.Note.Count > 1)
-                            {
-                                st = this.fRec.Note[1].Trim();
-                            }
-                        }
-                        else
-                        {
-                            st = "";
-                        }
-                        return st;
-                    }
-                case 1:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((NoteColumnType)colType)
+            {
+                case NoteColumnType.ctText:
+                    string noteText = GKUtils.MergeStrings(fRec.Note);
+                    //string noteText = GKUtils.TruncateStrings(fRec.Note, GKData.NOTE_NAME_MAX_LENGTH);
+                    result = noteText;
+                    break;
 
-        public NoteListMan(GEDCOMTree tree) : base(tree, new NoteListColumns())
-        {
+                case NoteColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

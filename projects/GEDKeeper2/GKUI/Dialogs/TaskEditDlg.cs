@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -33,68 +33,62 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class TaskEditDlg : Form, IBaseEditor
+    public sealed partial class TaskEditDlg : EditorDialog
     {
-        private readonly IBaseWindow fBase;
-        private readonly GKNotesSheet fNotesList;
+        private readonly GKSheetList fNotesList;
         
         private GEDCOMTaskRecord fTask;
         private GEDCOMRecord fTempRec;
 
         public GEDCOMTaskRecord Task
         {
-            get { return this.fTask; }
-            set { this.SetTask(value); }
-        }
-
-        public IBaseWindow Base
-        {
-            get { return this.fBase; }
+            get { return fTask; }
+            set { SetTask(value); }
         }
 
         private void SetTask(GEDCOMTaskRecord value)
         {
-            this.fTask = value;
+            fTask = value;
             try
             {
-                if (this.fTask == null)
+                if (fTask == null)
                 {
-                    this.txtPriority.SelectedIndex = -1;
-                    this.txtStartDate.Text = "";
-                    this.txtStopDate.Text = "";
-                    this.cmbGoalType.SelectedIndex = 0;
-                    this.txtGoal.Text = "";
+                    txtPriority.SelectedIndex = -1;
+                    txtStartDate.Text = "";
+                    txtStopDate.Text = "";
+                    cmbGoalType.SelectedIndex = 0;
+                    txtGoal.Text = "";
                 }
                 else
                 {
-                    this.txtPriority.SelectedIndex = (sbyte)this.fTask.Priority;
-                    this.txtStartDate.Text = GKUtils.GetDateFmtString(this.fTask.StartDate, DateFormat.dfDD_MM_YYYY);
-                    this.txtStopDate.Text = GKUtils.GetDateFmtString(this.fTask.StopDate, DateFormat.dfDD_MM_YYYY);
+                    txtPriority.SelectedIndex = (sbyte)fTask.Priority;
+                    txtStartDate.Text = GKUtils.GetDateFmtString(fTask.StartDate, DateFormat.dfDD_MM_YYYY);
+                    txtStopDate.Text = GKUtils.GetDateFmtString(fTask.StopDate, DateFormat.dfDD_MM_YYYY);
 
                     GKGoalType gt;
-                    this.fTask.GetTaskGoal(out gt, out this.fTempRec);
-                    this.cmbGoalType.SelectedIndex = (sbyte)gt;
+                    fTask.GetTaskGoal(out gt, out fTempRec);
+                    cmbGoalType.SelectedIndex = (sbyte)gt;
 
                     switch (gt) {
                         case GKGoalType.gtIndividual:
                         case GKGoalType.gtFamily:
                         case GKGoalType.gtSource:
-                            this.txtGoal.Text = GKUtils.GetGoalStr(gt, this.fTempRec);
+                            txtGoal.Text = GKUtils.GetGoalStr(gt, fTempRec);
                             break;
 
                         case GKGoalType.gtOther:
-                            this.txtGoal.Text = this.fTask.Goal;
+                            txtGoal.Text = fTask.Goal;
                             break;
                     }
                 }
 
-                this.cbGoalType_SelectedIndexChanged(null, null);
-                
-                this.fNotesList.DataList = this.fTask.Notes.GetEnumerator();
+                fNotesList.ListModel.DataOwner = fTask;
+
+                cmbGoalType_SelectedIndexChanged(null, null);
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("TaskEditDlg.SetTask(): " + ex.Message);
+                fBase.Host.LogWrite("TaskEditDlg.SetTask(): " + ex.Message);
             }
         }
 
@@ -102,48 +96,61 @@ namespace GKUI.Dialogs
         {
             try
             {
-                this.fTask.Priority = (GKResearchPriority)this.txtPriority.SelectedIndex;
-                this.fTask.StartDate.ParseString(GEDCOMUtils.StrToGEDCOMDate(this.txtStartDate.Text, true));
-                this.fTask.StopDate.ParseString(GEDCOMUtils.StrToGEDCOMDate(this.txtStopDate.Text, true));
-                GKGoalType gt = (GKGoalType)this.cmbGoalType.SelectedIndex;
+                fTask.Priority = (GKResearchPriority)txtPriority.SelectedIndex;
+                fTask.StartDate.ParseString(GEDCOMUtils.StrToGEDCOMDate(txtStartDate.Text, true));
+                fTask.StopDate.ParseString(GEDCOMUtils.StrToGEDCOMDate(txtStopDate.Text, true));
+                GKGoalType gt = (GKGoalType)cmbGoalType.SelectedIndex;
                 switch (gt) {
                     case GKGoalType.gtIndividual:
                     case GKGoalType.gtFamily:
                     case GKGoalType.gtSource:
-                        this.fTask.Goal = GEDCOMUtils.EncloseXRef(this.fTempRec.XRef);
+                        fTask.Goal = GEDCOMUtils.EncloseXRef(fTempRec.XRef);
                         break;
                     case GKGoalType.gtOther:
-                        this.fTask.Goal = this.txtGoal.Text;
+                        fTask.Goal = txtGoal.Text;
                         break;
                 }
 
-                this.Base.ChangeRecord(this.fTask);
-                base.DialogResult = DialogResult.OK;
+                CommitChanges();
+                Base.ChangeRecord(fTask);
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("TaskEditDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("TaskEditDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
+            }
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                RollbackChanges();
+            }
+            catch (Exception ex)
+            {
+                fBase.Host.LogWrite("TaskEditDlg.btnCancel_Click(): " + ex.Message);
             }
         }
 
         private void btnGoalSelect_Click(object sender, EventArgs e)
         {
-            GKGoalType gt = (GKGoalType)this.cmbGoalType.SelectedIndex;
+            GKGoalType gt = (GKGoalType)cmbGoalType.SelectedIndex;
             switch (gt) {
                 case GKGoalType.gtIndividual:
-                    this.fTempRec = this.Base.SelectPerson(null, TargetMode.tmNone, GEDCOMSex.svNone);
-                    this.txtGoal.Text = GKUtils.GetGoalStr(gt, this.fTempRec);
+                    fTempRec = Base.SelectPerson(null, TargetMode.tmNone, GEDCOMSex.svNone);
+                    txtGoal.Text = GKUtils.GetGoalStr(gt, fTempRec);
                     break;
 
                 case GKGoalType.gtFamily:
-                    this.fTempRec = this.Base.SelectRecord(GEDCOMRecordType.rtFamily, new object[0]);
-                    this.txtGoal.Text = GKUtils.GetGoalStr(gt, this.fTempRec);
+                    fTempRec = Base.SelectRecord(GEDCOMRecordType.rtFamily, new object[0]);
+                    txtGoal.Text = GKUtils.GetGoalStr(gt, fTempRec);
                     break;
 
                 case GKGoalType.gtSource:
-                    this.fTempRec = this.Base.SelectRecord(GEDCOMRecordType.rtSource, new object[0]);
-                    this.txtGoal.Text = GKUtils.GetGoalStr(gt, this.fTempRec);
+                    fTempRec = Base.SelectRecord(GEDCOMRecordType.rtSource, new object[0]);
+                    txtGoal.Text = GKUtils.GetGoalStr(gt, fTempRec);
                     break;
 
                 case GKGoalType.gtOther:
@@ -151,67 +158,69 @@ namespace GKUI.Dialogs
             }
         }
 
-        private void cbGoalType_SelectedIndexChanged(object sender, EventArgs e)
+        private void cmbGoalType_SelectedIndexChanged(object sender, EventArgs e)
         {
-            GKGoalType gt = (GKGoalType)this.cmbGoalType.SelectedIndex;
+            GKGoalType gt = (GKGoalType)cmbGoalType.SelectedIndex;
             switch (gt) {
                 case GKGoalType.gtIndividual:
-                    this.btnGoalSelect.Enabled = true;
-                    this.txtGoal.BackColor = SystemColors.Control;
-                    this.txtGoal.ReadOnly = true;
+                    btnGoalSelect.Enabled = true;
+                    txtGoal.BackColor = SystemColors.Control;
+                    txtGoal.ReadOnly = true;
                     break;
+
                 case GKGoalType.gtFamily:
-                    this.btnGoalSelect.Enabled = true;
-                    this.txtGoal.BackColor = SystemColors.Control;
-                    this.txtGoal.ReadOnly = true;
+                    btnGoalSelect.Enabled = true;
+                    txtGoal.BackColor = SystemColors.Control;
+                    txtGoal.ReadOnly = true;
                     break;
+
                 case GKGoalType.gtSource:
-                    this.btnGoalSelect.Enabled = true;
-                    this.txtGoal.BackColor = SystemColors.Control;
-                    this.txtGoal.ReadOnly = true;
+                    btnGoalSelect.Enabled = true;
+                    txtGoal.BackColor = SystemColors.Control;
+                    txtGoal.ReadOnly = true;
                     break;
+
                 case GKGoalType.gtOther:
-                    this.btnGoalSelect.Enabled = false;
-                    this.txtGoal.BackColor = SystemColors.Window;
-                    this.txtGoal.ReadOnly = false;
+                    btnGoalSelect.Enabled = false;
+                    txtGoal.BackColor = SystemColors.Window;
+                    txtGoal.ReadOnly = false;
                     break;
             }
         }
 
-        public TaskEditDlg(IBaseWindow aBase)
+        public TaskEditDlg(IBaseWindow baseWin) : base(baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.btnGoalSelect.Image = global::GKResources.iRecNew;
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+            btnGoalSelect.Image = GKResources.iRecNew;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fBase = aBase;
-            this.fTempRec = null;
+            fTempRec = null;
 
             for (GKResearchPriority rp = GKResearchPriority.rpNone; rp <= GKResearchPriority.rpTop; rp++)
             {
-                this.txtPriority.Items.Add(LangMan.LS(GKData.PriorityNames[(int)rp]));
+                txtPriority.Items.Add(LangMan.LS(GKData.PriorityNames[(int)rp]));
             }
 
             for (GKGoalType gt = GKGoalType.gtIndividual; gt <= GKGoalType.gtOther; gt++)
             {
-                this.cmbGoalType.Items.Add(LangMan.LS(GKData.GoalNames[(int)gt]));
+                cmbGoalType.Items.Add(LangMan.LS(GKData.GoalNames[(int)gt]));
             }
 
-            this.fNotesList = new GKNotesSheet(this, this.pageNotes);
+            fNotesList = new GKSheetList(pageNotes, new GKNotesListModel(fBase, fLocalUndoman));
 
             // SetLang()
-            this.Text = LangMan.LS(LSID.LSID_WinTaskEdit);
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
-            this.lblGoal.Text = LangMan.LS(LSID.LSID_Goal);
-            this.lblPriority.Text = LangMan.LS(LSID.LSID_Priority);
-            this.lblStartDate.Text = LangMan.LS(LSID.LSID_StartDate);
-            this.lblStopDate.Text = LangMan.LS(LSID.LSID_StopDate);
+            Text = LangMan.LS(LSID.LSID_WinTaskEdit);
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
+            lblGoal.Text = LangMan.LS(LSID.LSID_Goal);
+            lblPriority.Text = LangMan.LS(LSID.LSID_Priority);
+            lblStartDate.Text = LangMan.LS(LSID.LSID_StartDate);
+            lblStopDate.Text = LangMan.LS(LSID.LSID_StopDate);
 
-            this.toolTip1.SetToolTip(this.btnGoalSelect, LangMan.LS(LSID.LSID_GoalSelectTip));
+            toolTip1.SetToolTip(btnGoalSelect, LangMan.LS(LSID.LSID_GoalSelectTip));
         }
     }
 }

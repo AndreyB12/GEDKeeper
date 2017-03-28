@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -23,6 +23,7 @@ using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
 
+using GKCommon;
 using GKCore;
 using GKCore.Interfaces;
 
@@ -37,11 +38,11 @@ namespace GKUI.Dialogs
 
         public ProgressDlg()
         {
-            this.InitializeComponent();
-            this.Text = LangMan.LS(LSID.LSID_Progress);
-            this.lblTimePassed.Text = LangMan.LS(LSID.LSID_TimePassed);
-            this.lblTimeRemain.Text = LangMan.LS(LSID.LSID_TimeRemain);
-            this.lblTimeTotal.Text = LangMan.LS(LSID.LSID_TimeTotal);
+            InitializeComponent();
+            Text = LangMan.LS(LSID.LSID_Progress);
+            lblTimePassed.Text = LangMan.LS(LSID.LSID_TimePassed);
+            lblTimeRemain.Text = LangMan.LS(LSID.LSID_TimeRemain);
+            lblTimeTotal.Text = LangMan.LS(LSID.LSID_TimeTotal);
         }
 
         private static string TimeSpanToString(TimeSpan ts)
@@ -85,7 +86,7 @@ namespace GKUI.Dialogs
 
         void IProgressController.ProgressStep()
         {
-            Invoke( new PStep( DoStep ), new object[] { this.fVal + 1 } );
+            Invoke( new PStep( DoStep ), new object[] { fVal + 1 } );
         }
 
         void IProgressController.ProgressStep(int value)
@@ -106,39 +107,39 @@ namespace GKUI.Dialogs
 
         internal void DoInit(string title, int max)
         {
-            this.lblTitle.Text = title;
-            this.ProgressBar1.Maximum = max;
-            this.ProgressBar1.Minimum = 0;
-            this.ProgressBar1.Value = 0;
-            this.fStartTime = DateTime.Now;
-            this.fVal = 0;
+            lblTitle.Text = title;
+            ProgressBar1.Maximum = max;
+            ProgressBar1.Minimum = 0;
+            ProgressBar1.Value = 0;
+            fStartTime = DateTime.Now;
+            fVal = 0;
         }
 
         internal void DoDone()
         {
-            this.Close();
+            Close();
         }
 
         internal void DoStep(int value)
         {
-            if (this.fVal == value) return;
+            if (fVal == value) return;
 
-            this.fVal = value;
-            this.ProgressBar1.Value = this.fVal;
+            fVal = value;
+            ProgressBar1.Value = fVal;
 
-            double max = this.ProgressBar1.Maximum;
-            double pos = this.fVal;
-            if (pos == 0) pos = 1;
+            double max = ProgressBar1.Maximum;
+            double pos = fVal;
+            if (pos == 0.0d) pos = 1;
 
-            TimeSpan passTime = DateTime.Now - this.fStartTime;
+            TimeSpan passTime = DateTime.Now - fStartTime;
             TimeSpan restTime = new TimeSpan((long)Math.Truncate((passTime.Ticks / pos) * (max - pos)));
             TimeSpan sumTime = passTime + restTime;
 
-            this.lblPassedVal.Text = TimeSpanToString(passTime);
-            this.lblRemainVal.Text = TimeSpanToString(restTime);
-            this.lblTotalVal.Text = TimeSpanToString(sumTime);
+            lblPassedVal.Text = TimeSpanToString(passTime);
+            lblRemainVal.Text = TimeSpanToString(restTime);
+            lblTotalVal.Text = TimeSpanToString(sumTime);
 
-            this.Update();
+            Update();
         }
 
         #endregion
@@ -149,16 +150,15 @@ namespace GKUI.Dialogs
 
     public static class ProgressController
     {
-        private static ProgressProxy pfrm;
+        private static ProgressProxy fProxy;
         private static int fVal;
 
         public static void ProgressInit(string title, int max)
         {
-            if (pfrm != null) {
-                //pfrm.Close();
-                pfrm.ProgressReset(title, max);
+            if (fProxy != null) {
+                fProxy.ProgressReset(title, max);
             } else {
-                pfrm = new ProgressProxy(title, max);
+                fProxy = new ProgressProxy(title, max);
             }
 
             fVal = 0;
@@ -166,21 +166,21 @@ namespace GKUI.Dialogs
 
         public static void ProgressDone()
         {
-            if (pfrm != null) {
-                pfrm.Close();
-                pfrm = null;
-            }
+            if (fProxy == null) return;
+
+            fProxy.Close();
+            fProxy = null;
         }
 
         public static void ProgressStep()
         {
-            pfrm.UpdateProgress(fVal++);
+            fProxy.UpdateProgress(fVal++);
             //System.Threading.Thread.Sleep(0); // debug
         }
 
         public static void ProgressStep(int value)
         {
-            pfrm.UpdateProgress(value);
+            fProxy.UpdateProgress(value);
             //System.Threading.Thread.Sleep(0); // debug
         }
     }
@@ -191,13 +191,16 @@ namespace GKUI.Dialogs
         private readonly string fTitle;
         private readonly int fMax;
         //private ManualResetEvent fMRE = new ManualResetEvent(false);
-        private bool fFormLoaded = false;
+        private bool fFormLoaded;
         private readonly Thread fThread;
+        private readonly IntPtr fParentHandle;
 
         public ProgressProxy(string title, int max)
         {
-            this.fTitle = title;
-            this.fMax = max;
+            fFormLoaded = false;
+            fTitle = title;
+            fMax = max;
+            fParentHandle = MainWin.Instance.Handle;
 
             fThread = new Thread(ShowProgressForm);
             fThread.SetApartmentState(ApartmentState.STA);
@@ -213,9 +216,12 @@ namespace GKUI.Dialogs
         private void ShowProgressForm()
         {
             fProgressForm = new ProgressDlg();
-            fProgressForm.StartPosition = FormStartPosition.CenterScreen;
             fProgressForm.DoInit(fTitle, fMax);
-            fProgressForm.Load += new EventHandler(ProgressForm_Load);
+            fProgressForm.Load += ProgressForm_Load;
+
+            //fProgressForm.StartPosition = FormStartPosition.CenterScreen;
+            UIHelper.CenterFormByParent(fProgressForm, fParentHandle);
+
             fProgressForm.ShowDialog();
             fProgressForm.Close();
         }
@@ -274,8 +280,8 @@ namespace GKUI.Dialogs
             }
         }
 
-        delegate void DelReset(string title, int max);
-        delegate void DelUpdateProgress(int percent);
-        delegate void DelClose();
+        private delegate void DelReset(string title, int max);
+        private delegate void DelUpdateProgress(int percent);
+        private delegate void DelClose();
     }
 }

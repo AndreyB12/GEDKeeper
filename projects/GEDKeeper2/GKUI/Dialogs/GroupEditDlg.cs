@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,8 +25,8 @@ using GKCommon;
 using GKCommon.GEDCOM;
 using GKCore;
 using GKCore.Interfaces;
+using GKCore.Operations;
 using GKCore.Types;
-using GKUI.Controls;
 using GKUI.Sheets;
 
 namespace GKUI.Dialogs
@@ -34,80 +34,69 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class GroupEditDlg : Form, IBaseEditor
+    public sealed partial class GroupEditDlg : EditorDialog
     {
-        private readonly IBaseWindow fBase;
         private readonly GKSheetList fMembersList;
-        private readonly GKNotesSheet fNotesList;
-        private readonly GKMediaSheet fMediaList;
+        private readonly GKSheetList fNotesList;
+        private readonly GKSheetList fMediaList;
 
         private GEDCOMGroupRecord fGroup;
 
         public GEDCOMGroupRecord Group
         {
-            get { return this.fGroup; }
-            set { this.SetGroup(value); }
-        }
-
-        public IBaseWindow Base
-        {
-            get { return this.fBase; }
+            get { return fGroup; }
+            set { SetGroup(value); }
         }
 
         private void SetGroup(GEDCOMGroupRecord value)
         {
-            this.fGroup = value;
+            fGroup = value;
             try
             {
-                this.edName.Text = (this.fGroup == null) ? "" : this.fGroup.GroupName;
+                edName.Text = (fGroup == null) ? "" : fGroup.GroupName;
 
-                if (this.fGroup != null)
-                {
-                    this.fNotesList.DataList = this.fGroup.Notes.GetEnumerator();
-                    this.fMediaList.DataList = this.fGroup.MultimediaLinks.GetEnumerator();
-                }
+                fNotesList.ListModel.DataOwner = fGroup;
+                fMediaList.ListModel.DataOwner = fGroup;
 
-                this.UpdateMembersSheet();
+                UpdateMembersSheet();
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("GroupEditDlg.SetGroup(): " + ex.Message);
+                fBase.Host.LogWrite("GroupEditDlg.SetGroup(): " + ex.Message);
             }
         }
-        
-        public GroupEditDlg(IBaseWindow aBase)
+
+        public GroupEditDlg(IBaseWindow baseWin) : base(baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
             
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fBase = aBase;
+            fMembersList = CreateMembersSheet(pageMembers);
+            fMembersList.SetControlName("fMembersList"); // for purpose of tests
 
-            this.fMembersList = CreateMembersSheet(this.pageMembers);
-            this.fNotesList = new GKNotesSheet(this, this.pageNotes);
-            this.fMediaList = new GKMediaSheet(this, this.pageMultimedia);
+            fNotesList = new GKSheetList(pageNotes, new GKNotesListModel(fBase, fLocalUndoman));
+            fMediaList = new GKSheetList(pageMultimedia, new GKMediaListModel(fBase, fLocalUndoman));
 
             // SetLang()
-            this.Text = LangMan.LS(LSID.LSID_WinGroupEdit);
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.lblName.Text = LangMan.LS(LSID.LSID_Title);
-            this.pageMembers.Text = LangMan.LS(LSID.LSID_Members);
-            this.pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
-            this.pageMultimedia.Text = LangMan.LS(LSID.LSID_RPMultimedia);
+            Text = LangMan.LS(LSID.LSID_WinGroupEdit);
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            lblName.Text = LangMan.LS(LSID.LSID_Title);
+            pageMembers.Text = LangMan.LS(LSID.LSID_Members);
+            pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
+            pageMultimedia.Text = LangMan.LS(LSID.LSID_RPMultimedia);
         }
 
         private GKSheetList CreateMembersSheet(Control owner)
         {
             GKSheetList sheet = new GKSheetList(owner);
-            
-            sheet.Columns_BeginUpdate();
+
             sheet.AddColumn(LangMan.LS(LSID.LSID_Name), 300, false);
-            sheet.Columns_EndUpdate();
 
             sheet.Buttons = EnumSet<SheetButton>.Create(SheetButton.lbAdd, SheetButton.lbDelete, SheetButton.lbJump);
-            sheet.OnModify += this.ModifyMembersSheet;
+            sheet.OnModify += ModifyMembersSheet;
             
             return sheet;
         }
@@ -116,14 +105,14 @@ namespace GKUI.Dialogs
         {
             try
             {
-                this.fMembersList.ClearItems();
-                if (this.fGroup == null) return;
+                fMembersList.ClearItems();
+                if (fGroup == null) return;
 
-                foreach (GEDCOMPointer ptrMember in this.fGroup.Members) {
+                foreach (GEDCOMPointer ptrMember in fGroup.Members) {
                     GEDCOMIndividualRecord member = ptrMember.Value as GEDCOMIndividualRecord;
                     if (member == null) continue;
 
-                    this.fMembersList.AddItem(member.GetNameString(true, false), member);
+                    fMembersList.AddItem(GKUtils.GetNameString(member, true, false), member);
                 }
             }
             catch (Exception ex)
@@ -141,44 +130,66 @@ namespace GKUI.Dialogs
             switch (eArgs.Action)
             {
                 case RecordAction.raAdd:
-                    member = this.fBase.SelectPerson(null, TargetMode.tmNone, GEDCOMSex.svNone);
-                    result = (member != null && this.fGroup.AddMember(member));
+                    member = fBase.SelectPerson(null, TargetMode.tmNone, GEDCOMSex.svNone);
+                    result = (member != null);
+                    if (result) {
+                        //fGroup.AddMember(member);
+                        result = fLocalUndoman.DoOrdinaryOperation(OperationType.otGroupMemberAttach, fGroup, member);
+                    }
                     break;
 
                 case RecordAction.raDelete:
-                    result = (member != null && GKUtils.ShowQuestion(LangMan.LS(LSID.LSID_DetachMemberQuery)) != DialogResult.No && this.fGroup.RemoveMember(member));
+                    result = (member != null && GKUtils.ShowQuestion(LangMan.LS(LSID.LSID_DetachMemberQuery)) != DialogResult.No);
+                    if (result) {
+                        //fGroup.RemoveMember(member);
+                        result = fLocalUndoman.DoOrdinaryOperation(OperationType.otGroupMemberDetach, fGroup, member);
+                    }
                     break;
-                    
+
                 case RecordAction.raJump:
                     if (member != null) {
-                        this.AcceptChanges();
-                        base.DialogResult = DialogResult.OK;
-                        this.fBase.SelectRecordByXRef(member.XRef);
-                        base.Close();
+                        AcceptChanges();
+                        DialogResult = DialogResult.OK;
+                        fBase.SelectRecordByXRef(member.XRef);
+                        Close();
                     }
                     break;
             }
 
-            if (result) this.UpdateMembersSheet();
+            if (result) UpdateMembersSheet();
         }
 
         private void AcceptChanges()
         {
-            this.fGroup.GroupName = this.edName.Text;
-            this.fBase.ChangeRecord(this.fGroup);
+            CommitChanges();
+
+            fGroup.GroupName = edName.Text;
+            fBase.ChangeRecord(fGroup);
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                this.AcceptChanges();
-                base.DialogResult = DialogResult.OK;
+                AcceptChanges();
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("GroupEditDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("GroupEditDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
+            }
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                RollbackChanges();
+            }
+            catch (Exception ex)
+            {
+                fBase.Host.LogWrite("GroupEditDlg.btnCancel_Click(): " + ex.Message);
             }
         }
     }

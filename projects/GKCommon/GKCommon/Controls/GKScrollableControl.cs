@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -30,41 +29,41 @@ namespace GKCommon.Controls
 
         public GKScrollableControl()
         {
-            base.AutoScroll = true;
-            base.ResizeRedraw = true;
+            AutoScroll = true;
+            ResizeRedraw = true;
 
             #if __MonoCS__
-            ScrollBar obj = ReflectionHelper.GetFieldValue(this, "hscrollbar") as ScrollBar;
+            ScrollBar obj = SysUtils.GetFieldValue(this, "hscrollbar") as ScrollBar;
             if (obj != null) {
-                ReflectionHelper.RemoveControlStdEventHandlers(obj, "ScrollEvent");
+                SysUtils.RemoveControlStdEventHandlers(obj, "ScrollEvent");
                 obj.Scroll += new ScrollEventHandler(HandleHScrollEvent);
             }
 
-            obj = ReflectionHelper.GetFieldValue(this, "vscrollbar") as ScrollBar;
+            obj = SysUtils.GetFieldValue(this, "vscrollbar") as ScrollBar;
             if (obj != null) {
-                ReflectionHelper.RemoveControlStdEventHandlers(obj, "ScrollEvent");
+                SysUtils.RemoveControlStdEventHandlers(obj, "ScrollEvent");
                 obj.Scroll += new ScrollEventHandler(HandleVScrollEvent);
             }
             #else
-            //this.fValidEvent = true;
+            //fValidEvent = true;
             #endif
         }
 
         #if __MonoCS__
-        private void HandleHScrollEvent (object sender, ScrollEventArgs args)
+        private void HandleHScrollEvent(object sender, ScrollEventArgs args)
         {
-            //this.fValidEvent = true;
+            //fValidEvent = true;
             ScrollEventArgs newArgs = new ScrollEventArgs(args.Type, args.OldValue, args.NewValue, ScrollOrientation.HorizontalScroll);
-            this.OnScroll(newArgs);
-            //this.fValidEvent = false;
+            OnScroll(newArgs);
+            //fValidEvent = false;
         }
 
-        private void HandleVScrollEvent (object sender, ScrollEventArgs args)
+        private void HandleVScrollEvent(object sender, ScrollEventArgs args)
         {
-            //this.fValidEvent = true;
+            //fValidEvent = true;
             ScrollEventArgs newArgs = new ScrollEventArgs(args.Type, args.OldValue, args.NewValue, ScrollOrientation.VerticalScroll);
-            this.OnScroll(newArgs);
-            //this.fValidEvent = false;
+            OnScroll(newArgs);
+            //fValidEvent = false;
         }
         #endif
 
@@ -72,30 +71,30 @@ namespace GKCommon.Controls
         {
             base.OnMouseDown(e);
 
-            if (!this.Focused)
-                this.Focus();
+            if (!Focused)
+                Focus();
         }
 
         /// <summary>
         ///   Raises the <see cref="System.Windows.Forms.ScrollableControl.Scroll" /> event.
         /// </summary>
-        /// <param name="e">
+        /// <param name="se">
         ///   A <see cref="T:System.Windows.Forms.ScrollEventArgs" /> that contains the event data.
         /// </param>
         protected override void OnScroll(ScrollEventArgs se)
         {
-            this.Invalidate();
+            Invalidate();
 
-            if (se.Type != ScrollEventType.EndScroll /*&& this.fValidEvent*/)
+            if (se.Type != ScrollEventType.EndScroll /*&& fValidEvent*/)
             {
                 switch (se.ScrollOrientation)
                 {
                     case ScrollOrientation.HorizontalScroll:
-                        this.ScrollByOffset(new Size(se.NewValue + this.AutoScrollPosition.X, 0));
+                        ScrollByOffset(new Size(se.NewValue + AutoScrollPosition.X, 0));
                         break;
 
                     case ScrollOrientation.VerticalScroll:
-                        this.ScrollByOffset(new Size(0, se.NewValue + this.AutoScrollPosition.Y));
+                        ScrollByOffset(new Size(0, se.NewValue + AutoScrollPosition.Y));
                         break;
                 }
             }
@@ -105,20 +104,19 @@ namespace GKCommon.Controls
 
         private void ScrollByOffset(Size offset)
         {
-            if (!offset.IsEmpty)
-            {
-                this.SuspendLayout();
-                foreach (Control child in Controls) {
-                    child.Location -= offset;
-                }
+            if (offset.IsEmpty) return;
 
-                this.AutoScrollPosition = new Point(-(AutoScrollPosition.X - offset.Width), -(AutoScrollPosition.Y - offset.Height));
-
-                this.ResumeLayout();
-                this.Invalidate();
-                //this.Update();
-                //this.Refresh();
+            SuspendLayout();
+            foreach (Control child in Controls) {
+                child.Location -= offset;
             }
+
+            AutoScrollPosition = new Point(-(AutoScrollPosition.X - offset.Width), -(AutoScrollPosition.Y - offset.Height));
+
+            ResumeLayout();
+            Invalidate();
+            //Update();
+            //Refresh();
         }
 
         /// <summary>
@@ -128,8 +126,8 @@ namespace GKCommon.Controls
         /// <param name="y">The y.</param>
         protected void AdjustScroll(int x, int y)
         {
-            Point scrollPosition = new Point(this.HorizontalScroll.Value + x, this.VerticalScroll.Value + y);
-            this.UpdateScrollPosition(scrollPosition);
+            Point scrollPosition = new Point(HorizontalScroll.Value + x, VerticalScroll.Value + y);
+            UpdateScrollPosition(scrollPosition);
         }
 
         /// <summary>
@@ -138,18 +136,18 @@ namespace GKCommon.Controls
         /// <param name="position">The position.</param>
         protected void UpdateScrollPosition(Point position)
         {
-            this.AutoScrollPosition = position;
-            this.Invalidate();
-            this.OnScroll(new ScrollEventArgs(ScrollEventType.EndScroll, 0));
+            AutoScrollPosition = position;
+            Invalidate();
+            OnScroll(new ScrollEventArgs(ScrollEventType.EndScroll, 0));
         }
 
         protected void AdjustViewPort(Size imageSize, bool noRedraw = false)
         {
-            if (this.AutoScroll && !imageSize.IsEmpty) {
-                this.AutoScrollMinSize = new Size(imageSize.Width + this.Padding.Horizontal, imageSize.Height + this.Padding.Vertical);
+            if (AutoScroll && !imageSize.IsEmpty) {
+                AutoScrollMinSize = new Size(imageSize.Width + Padding.Horizontal, imageSize.Height + Padding.Vertical);
             }
 
-            if (!noRedraw) this.Invalidate();
+            if (!noRedraw) Invalidate();
         }
     }
 }

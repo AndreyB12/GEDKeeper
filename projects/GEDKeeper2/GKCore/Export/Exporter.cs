@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -32,6 +32,8 @@ namespace GKCore.Export
     /// </summary>
     public abstract class Exporter : BaseObject
     {
+        public static bool TEST_MODE = false;
+
         protected readonly IBaseWindow fBase;
         protected GlobalOptions fOptions;
         protected string fPath;
@@ -40,8 +42,8 @@ namespace GKCore.Export
 
         public GlobalOptions Options
         {
-            get { return this.fOptions; }
-            set { this.fOptions = value; }
+            get { return fOptions; }
+            set { fOptions = value; }
         }
 
         protected Exporter(IBaseWindow baseWin)
@@ -49,17 +51,17 @@ namespace GKCore.Export
             if (baseWin == null)
                 throw new ArgumentNullException("baseWin");
 
-            this.fBase = baseWin;
-            this.fTree = baseWin.Tree;
-
-            //if (!Directory.Exists(this.FPath)) Directory.CreateDirectory(this.FPath);
+            fBase = baseWin;
+            fTree = baseWin.Tree;
         }
 
         public abstract void Generate(bool show);
 
         protected void ShowResult()
         {
-            GKUtils.LoadExtFile(this.fPath);
+            if (TEST_MODE) return;
+
+            SysUtils.LoadExtFile(fPath);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -31,70 +31,75 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class RepositoryEditDlg : Form, IBaseEditor
+    public sealed partial class RepositoryEditDlg : EditorDialog
     {
-        private readonly IBaseWindow fBase;
-        private readonly GKNotesSheet fNotesList;
+        private readonly GKSheetList fNotesList;
 
         private GEDCOMRepositoryRecord fRepository;
         
         public GEDCOMRepositoryRecord Repository
         {
-            get { return this.fRepository; }
-            set { this.SetRepository(value); }
-        }
-
-        public IBaseWindow Base
-        {
-            get { return this.fBase; }
+            get { return fRepository; }
+            set { SetRepository(value); }
         }
 
         private void SetRepository(GEDCOMRepositoryRecord value)
         {
-            this.fRepository = value;
-            this.txtName.Text = this.fRepository.RepositoryName;
+            fRepository = value;
+            txtName.Text = fRepository.RepositoryName;
 
-            this.fNotesList.DataList = this.fRepository.Notes.GetEnumerator();
+            fNotesList.ListModel.DataOwner = fRepository;
         }
 
         private void btnAddress_Click(object sender, EventArgs e)
         {
-            this.fBase.ModifyAddress(this.fRepository.Address);
+            fBase.ModifyAddress(fRepository.Address);
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                this.fRepository.RepositoryName = this.txtName.Text;
-                this.fBase.ChangeRecord(this.fRepository);
-                base.DialogResult = DialogResult.OK;
+                fRepository.RepositoryName = txtName.Text;
+                CommitChanges();
+                fBase.ChangeRecord(fRepository);
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("RepositoryEditDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("RepositoryEditDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
             }
         }
 
-        public RepositoryEditDlg(IBaseWindow aBase)
+        private void btnCancel_Click(object sender, EventArgs e)
         {
-            this.InitializeComponent();
+            try
+            {
+                RollbackChanges();
+            }
+            catch (Exception ex)
+            {
+                fBase.Host.LogWrite("RepositoryEditDlg.btnCancel_Click(): " + ex.Message);
+            }
+        }
 
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+        public RepositoryEditDlg(IBaseWindow baseWin) : base(baseWin)
+        {
+            InitializeComponent();
 
-            this.fBase = aBase;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fNotesList = new GKNotesSheet(this, this.pageNotes);
+            fNotesList = new GKSheetList(pageNotes, new GKNotesListModel(fBase, fLocalUndoman));
 
             // SetLang()
-            this.Text = LangMan.LS(LSID.LSID_Repository);
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.lblName.Text = LangMan.LS(LSID.LSID_Title);
-            this.pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
-            this.btnAddress.Text = LangMan.LS(LSID.LSID_Address) + @"...";
+            Text = LangMan.LS(LSID.LSID_Repository);
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            lblName.Text = LangMan.LS(LSID.LSID_Title);
+            pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
+            btnAddress.Text = LangMan.LS(LSID.LSID_Address) + @"...";
         }
     }
 }

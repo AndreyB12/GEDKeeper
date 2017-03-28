@@ -1,8 +1,15 @@
-rem @echo off
-
-cls
 
 del /q .\deploy\*.exe
+
+del .\coverageResults.txt
+
+rmdir .\cov-int /s /q
+del .\coverity.zip
+
+rmdir .\.sonarqube /s /q
+
+del .\GKUpdater.ini
+del .\GKUpdater.log
 
 rem <<< Main assemblies cleaning >>>
 
@@ -12,10 +19,22 @@ rmdir .\projects\GEDKeeper2\obj /s /q
 rmdir .\projects\GKCommon\bin /s /q
 rmdir .\projects\GKCommon\obj /s /q
 
+rmdir .\projects\GKMediaPlayer\bin /s /q
+rmdir .\projects\GKMediaPlayer\obj /s /q
+
+rmdir .\projects\GKIntl\bin /s /q
+rmdir .\projects\GKIntl\obj /s /q
+
+rmdir .\projects\GKSandbox\bin /s /q
+rmdir .\projects\GKSandbox\obj /s /q
+
 rmdir .\projects\GKTests\bin /s /q
 rmdir .\projects\GKTests\obj /s /q
 rmdir .\projects\GKTests\OpenCover /s /q
 rmdir .\projects\GKTests\PartCover /s /q
+
+rmdir .\projects\GKUpdater\bin /s /q
+rmdir .\projects\GKUpdater\obj /s /q
 
 rem <<< Plugins cleaning >>>
 
@@ -36,6 +55,9 @@ rmdir .\projects\GKImageViewerPlugin\obj /s /q
 
 rmdir .\projects\GKNamesBookPlugin\bin /s /q
 rmdir .\projects\GKNamesBookPlugin\obj /s /q
+
+rmdir .\projects\GKNavigatorPlugin\bin /s /q
+rmdir .\projects\GKNavigatorPlugin\obj /s /q
 
 rmdir .\projects\GKPedigreeImporterPlugin\bin /s /q
 rmdir .\projects\GKPedigreeImporterPlugin\obj /s /q

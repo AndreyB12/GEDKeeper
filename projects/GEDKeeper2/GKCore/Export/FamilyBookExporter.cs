@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Windows.Forms;
 
 using GKCommon;
@@ -32,16 +31,19 @@ using iTextSharp.text.pdf;
 
 namespace GKCore.Export
 {
+    using itFont = iTextSharp.text.Font;
+    using itImage = iTextSharp.text.Image;
+
     /// <summary>
     /// 
     /// CodeTransformation: need
     /// </summary>
-    public sealed class FamilyBookExporter : Exporter
+    public sealed class FamilyBookExporter : PDFExporter
     {
         private enum BookCatalog
         {
             Catalog_First = 0,
-            
+
             Catalog_BirthYears = Catalog_First,
             Catalog_DeathYears,
             Catalog_BirthPlaces,
@@ -50,7 +52,7 @@ namespace GKCore.Export
             Catalog_Occupations,
             Catalog_Religion,
             Catalog_Sources,
-            
+
             Catalog_Last = Catalog_Sources
         }
 
@@ -59,15 +61,15 @@ namespace GKCore.Export
             public readonly string Sign;
             public readonly string Title;
             public StringList Index;
-            
+
             public CatalogProps(string sign, string title)
             {
-                this.Sign = sign;
-                this.Title = title;
-                this.Index = null;
+                Sign = sign;
+                Title = title;
+                Index = null;
             }
         }
-        
+
         private readonly CatalogProps[] BookCatalogs = {
             new CatalogProps("Catalog_BirthYears", LangMan.LS(LSID.LSID_BirthYears)),
             new CatalogProps("Catalog_DeathYears", LangMan.LS(LSID.LSID_DeathYears)),
@@ -78,19 +80,14 @@ namespace GKCore.Export
             new CatalogProps("Catalog_Religion", LangMan.LS(LSID.LSID_Religion)),
             new CatalogProps("Catalog_Sources", LangMan.LS(LSID.LSID_RPSources))
         };
-        
-        private Padding fMargins;
-        private Document fDocument;
-        private PdfWriter fPdfWriter;
-        private bool fAlbumPage;
 
-        private Font fTitleFont;
-        private Font fChapFont;
-        private Font fSubchapFont;
-        private Font fLinkFont;
-        private Font fTextFont;
-        private Font fBoldFont;
-        private Font fSymFont;
+        private itFont fTitleFont;
+        private itFont fChapFont;
+        private itFont fSubchapFont;
+        private itFont fLinkFont;
+        private itFont fTextFont;
+        private itFont fBoldFont;
+        private itFont fSymFont;
 
         private StringList mainIndex;
         private StringList byIndex, dyIndex, bpIndex, dpIndex;
@@ -101,12 +98,12 @@ namespace GKCore.Export
         public bool CatalogNewPages = false;
         public bool IncludeEvents = true;
         public bool IncludeNotes = true;
-        
-        
-        public FamilyBookExporter(IBaseWindow aBase) : base(aBase)
+
+
+        public FamilyBookExporter(IBaseWindow baseWin) : base(baseWin)
         {
-            this.fMargins = new Padding(20);
-            this.fAlbumPage = true;
+            fMargins = new Padding(20);
+            fAlbumPage = true;
         }
 
         protected override void Dispose(bool disposing)
@@ -133,46 +130,11 @@ namespace GKCore.Export
             fDocument.Add(new Paragraph(chunk) { Alignment = alignment });
         }*/
 
-        public override void Generate(bool show)
-        {
-            bool success = false;
-            this.fPath = UIHelper.GetSaveFile("PDF files (*.pdf)|*.pdf");
-            if (string.IsNullOrEmpty(this.fPath)) return;
-
-            Rectangle pageSize = !this.fAlbumPage ? PageSize.A4 : PageSize.A4.Rotate();
-
-            fDocument = new Document(pageSize, this.fMargins.Left, this.fMargins.Right, this.fMargins.Top, this.fMargins.Bottom);
-            try
-            {
-                try
-                {
-                    this.fPdfWriter = PdfWriter.GetInstance(fDocument, new FileStream(this.fPath, FileMode.Create));
-                    this.InternalGenerate();
-                    success = true;
-                }
-                finally
-                {
-                    fDocument.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.fBase.Host.LogWrite("FamilyBookExporter.Generate(): " + ex.Message);
-                this.fBase.Host.LogWrite("FamilyBookExporter.Generate(): " + ex.StackTrace);
-            }
-
-            if (!success) {
-                MessageBox.Show(LangMan.LS(LSID.LSID_GenerationFailed));
-            } else {
-                if (show) this.ShowResult();
-            }
-        }
-
-        private void InternalGenerate()
+        protected override void InternalGenerate()
         {
             try
             {
-                this.PrepareData();
+                PrepareData();
 
                 fDocument.AddTitle("FamilyBook");
                 fDocument.AddSubject("FamilyBook");
@@ -181,13 +143,13 @@ namespace GKCore.Export
                 fDocument.Open();
 
                 BaseFont baseFont = BaseFont.CreateFont(Environment.ExpandEnvironmentVariables(@"%systemroot%\fonts\Times.ttf"), "CP1251", BaseFont.EMBEDDED);
-                fTitleFont = new Font(baseFont, 30f, Font.BOLD);
-                fChapFont = new Font(baseFont, 16f, Font.BOLD, BaseColor.BLACK);
-                fSubchapFont = new Font(baseFont, 14f, Font.BOLD, BaseColor.BLACK);
-                fLinkFont = new Font(baseFont, 8f, Font.UNDERLINE, BaseColor.BLUE);
-                fTextFont = new Font(baseFont, 8f, Font.NORMAL, BaseColor.BLACK);
-                fBoldFont = new Font(baseFont, 8f, Font.BOLD, BaseColor.BLACK);
-                fSymFont = new Font(baseFont, 12f, Font.BOLD, BaseColor.BLACK);
+                fTitleFont = new itFont(baseFont, 30f, Font.BOLD);
+                fChapFont = new itFont(baseFont, 16f, Font.BOLD, BaseColor.BLACK);
+                fSubchapFont = new itFont(baseFont, 14f, Font.BOLD, BaseColor.BLACK);
+                fLinkFont = new itFont(baseFont, 8f, Font.UNDERLINE, BaseColor.BLUE);
+                fTextFont = new itFont(baseFont, 8f, Font.NORMAL, BaseColor.BLACK);
+                fBoldFont = new itFont(baseFont, 8f, Font.BOLD, BaseColor.BLACK);
+                fSymFont = new itFont(baseFont, 12f, Font.BOLD, BaseColor.BLACK);
 
                 baseFont = BaseFont.CreateFont(Environment.ExpandEnvironmentVariables(@"%systemroot%\fonts\Calibri.ttf"), "CP1251", BaseFont.EMBEDDED);
                 //Font page_font = new Font(base_font, 9f, Font.NORMAL);
@@ -222,7 +184,7 @@ namespace GKCore.Export
                 {
                     CatalogProps catProps = BookCatalogs[(int)cat];
                     
-                    if (!this.SkipEmptyCatalogs || catProps.Index.Count > 0) {
+                    if (!SkipEmptyCatalogs || catProps.Index.Count > 0) {
                         catNum++;
                         string title = "2." + catNum.ToString() + ". " + catProps.Title;
                         
@@ -261,7 +223,7 @@ namespace GKCore.Export
                         }
                     }
 
-                    this.ExposePerson(columnText, iRec, text, colWidth);
+                    ExposePerson(columnText, iRec, text, colWidth);
 
                     columnText.AddElement(new Paragraph(Chunk.NEWLINE));
                 }
@@ -274,7 +236,7 @@ namespace GKCore.Export
                 fDocument.Add(new Paragraph(Chunk.NEWLINE));
 
                 //SimpleColumnText columnText;
-                if (!this.CatalogNewPages) {
+                if (!CatalogNewPages) {
                     columnText = new SimpleColumnText(fDocument, fPdfWriter.DirectContent, 3, 10f);
                 }
 
@@ -282,19 +244,19 @@ namespace GKCore.Export
                 {
                     CatalogProps catProps = BookCatalogs[(int)cat];
                     
-                    if (!this.SkipEmptyCatalogs || catProps.Index.Count > 0) {
-                        if (this.CatalogNewPages) {
+                    if (!SkipEmptyCatalogs || catProps.Index.Count > 0) {
+                        if (CatalogNewPages) {
                             fDocument.NewPage();
                             columnText = new SimpleColumnText(fDocument, fPdfWriter.DirectContent, 3, 10f);
                         }
 
-                        this.ExposeCatalog(fDocument, columnText, catProps);
+                        ExposeCatalog(fDocument, columnText, catProps);
                     }
                 }
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("FamilyBookExporter.InternalGenerate(): " + ex.Message);
+                fBase.Host.LogWrite("FamilyBookExporter.InternalGenerate(): " + ex.Message);
                 throw;
             }
         }
@@ -315,11 +277,11 @@ namespace GKCore.Export
             
             GEDCOMRecord rec;
 
-            var iEnum = this.fTree.GetEnumerator(GEDCOMRecordType.rtIndividual);
+            var iEnum = fTree.GetEnumerator(GEDCOMRecordType.rtIndividual);
             while (iEnum.MoveNext(out rec))
             {
                 GEDCOMIndividualRecord iRec = (GEDCOMIndividualRecord)rec;
-                string text = iRec.GetNameString(true, false);
+                string text = GKUtils.GetNameString(iRec, true, false);
                 string st;
 
                 mainIndex.AddObject(text, iRec);
@@ -328,53 +290,50 @@ namespace GKCore.Export
                 for (int k = 0; k < evNum; k++)
                 {
                     GEDCOMCustomEvent evt = iRec.Events[k];
+                    if (evt == null) continue;
 
-                    if (evt != null)
+                    int srcNum2 = evt.SourceCitations.Count;
+                    for (int m = 0; m < srcNum2; m++)
                     {
-                        int srcNum2 = evt.Detail.SourceCitations.Count;
-                        for (int m = 0; m < srcNum2; m++)
-                        {
-                            GEDCOMSourceRecord src = evt.Detail.SourceCitations[m].Value as GEDCOMSourceRecord;
-                            if (src != null)
-                            {
-                                st = src.FiledByEntry;
-                                if (string.IsNullOrEmpty(st)) st = src.Title.Text;
-                                PrepareSpecIndex(sourcesIndex, st, iRec);
-                            }
-                        }
+                        GEDCOMSourceRecord src = evt.SourceCitations[m].Value as GEDCOMSourceRecord;
+                        if (src == null) continue;
 
-                        // The analysis places
+                        st = src.FiledByEntry;
+                        if (string.IsNullOrEmpty(st)) st = src.Title.Text;
+                        PrepareSpecIndex(sourcesIndex, st, iRec);
+                    }
+
+                    // The analysis places
 //						st = ev.Detail.Place.StringValue;
 //						if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(places, st, iRec);
 
-                        if (evt.Name == "BIRT") {
-                            // Analysis on births
-                            PrepareEventYear(byIndex, evt, iRec);
-                            st = GKUtils.GetPlaceStr(evt, false);
-                            if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(bpIndex, st, iRec);
-                        }
-                        else if (evt.Name == "DEAT")
-                        {
-                            // Analysis by causes of death
-                            PrepareEventYear(dyIndex, evt, iRec);
-                            st = GKUtils.GetPlaceStr(evt, false);
-                            if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(dpIndex, st, iRec);
+                    if (evt.Name == "BIRT") {
+                        // Analysis on births
+                        PrepareEventYear(byIndex, evt, iRec);
+                        st = GKUtils.GetPlaceStr(evt, false);
+                        if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(bpIndex, st, iRec);
+                    }
+                    else if (evt.Name == "DEAT")
+                    {
+                        // Analysis by causes of death
+                        PrepareEventYear(dyIndex, evt, iRec);
+                        st = GKUtils.GetPlaceStr(evt, false);
+                        if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(dpIndex, st, iRec);
 
-                            st = evt.Detail.Cause;
-                            if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(deathCauses, st, iRec);
-                        }
-                        else if (evt.Name == "OCCU")
-                        {
-                            // Analysis by occupation
-                            st = evt.StringValue;
-                            if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(occuIndex, st, iRec);
-                        }
-                        else if (evt.Name == "RELI")
-                        {
-                            // Analysis by religion
-                            st = evt.StringValue;
-                            if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(reliIndex, st, iRec);
-                        }
+                        st = evt.Cause;
+                        if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(deathCauses, st, iRec);
+                    }
+                    else if (evt.Name == "OCCU")
+                    {
+                        // Analysis by occupation
+                        st = evt.StringValue;
+                        if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(occuIndex, st, iRec);
+                    }
+                    else if (evt.Name == "RELI")
+                    {
+                        // Analysis by religion
+                        st = evt.StringValue;
+                        if (!string.IsNullOrEmpty(st)) PrepareSpecIndex(reliIndex, st, iRec);
                     }
                 }
 
@@ -382,12 +341,11 @@ namespace GKCore.Export
                 for (int k = 0; k < srcNum; k++)
                 {
                     GEDCOMSourceRecord src = iRec.SourceCitations[k].Value as GEDCOMSourceRecord;
+                    if (src == null) continue;
 
-                    if (src != null) {
-                        st = src.FiledByEntry;
-                        if (string.IsNullOrEmpty(st)) st = src.Title.Text;
-                        PrepareSpecIndex(sourcesIndex, st, iRec);
-                    }
+                    st = src.FiledByEntry;
+                    if (string.IsNullOrEmpty(st)) st = src.Title.Text;
+                    PrepareSpecIndex(sourcesIndex, st, iRec);
                 }
             }
 
@@ -414,10 +372,10 @@ namespace GKCore.Export
             pg.KeepTogether = true;
             mct.AddElement(pg);
 
-            var bmp = this.fBase.Context.GetPrimaryBitmap(iRec, 0, 0, false);
+            var bmp = fBase.Context.GetPrimaryBitmap(iRec, 0, 0, false);
             if (bmp != null)
             {
-                iTextSharp.text.Image img = iTextSharp.text.Image.GetInstance(bmp, System.Drawing.Imaging.ImageFormat.Bmp);
+                itImage img = itImage.GetInstance(bmp, System.Drawing.Imaging.ImageFormat.Bmp);
 
                 float fitWidth = colWidth * 0.5f;
                 img.ScaleToFit(fitWidth, fitWidth);
@@ -440,7 +398,7 @@ namespace GKCore.Export
 
             if (father != null) {
                 pg = new Paragraph();
-                chunk = new Chunk(father.GetNameString(true, false), fLinkFont);
+                chunk = new Chunk(GKUtils.GetNameString(father, true, false), fLinkFont);
                 chunk.SetLocalGoto(father.XRef);
                 pg.Add(new Chunk(LangMan.LS(LSID.LSID_Father) + ": ", fTextFont)); pg.Add(chunk);
                 mct.AddElement(pg);
@@ -448,13 +406,13 @@ namespace GKCore.Export
 
             if (mother != null) {
                 pg = new Paragraph();
-                chunk = new Chunk(mother.GetNameString(true, false), fLinkFont);
+                chunk = new Chunk(GKUtils.GetNameString(mother, true, false), fLinkFont);
                 chunk.SetLocalGoto(mother.XRef);
                 pg.Add(new Chunk(LangMan.LS(LSID.LSID_Mother) + ": ", fTextFont)); pg.Add(chunk);
                 mct.AddElement(pg);
             }
 
-            if (this.IncludeEvents && iRec.Events.Count != 0)
+            if (IncludeEvents && iRec.Events.Count != 0)
             {
                 int num = iRec.Events.Count;
                 for (int i = 0; i < num; i++)
@@ -474,7 +432,7 @@ namespace GKCore.Export
                 }
             }
 
-            if (this.IncludeNotes && iRec.Notes.Count != 0)
+            if (IncludeNotes && iRec.Notes.Count != 0)
             {
                 int num = iRec.Notes.Count;
                 for (int i = 0; i < num; i++)
@@ -493,7 +451,7 @@ namespace GKCore.Export
             Chunk chunk = new Chunk(catProps.Title, fSubchapFont);
             chunk.SetLocalDestination(catProps.Sign);
             
-            if (this.CatalogNewPages) {
+            if (CatalogNewPages) {
                 document.Add(new Paragraph(chunk));
                 document.Add(new Paragraph(Chunk.NEWLINE));
             } else {
@@ -532,13 +490,11 @@ namespace GKCore.Export
 
         private static void PrepareSpecIndex(StringList index, string val, GEDCOMIndividualRecord iRec)
         {
-            if (index == null) {
+            if (index == null)
                 throw new ArgumentNullException("index");
-            }
 
-            if (iRec == null) {
+            if (iRec == null)
                 throw new ArgumentNullException("iRec");
-            }
 
             StringList persons;
 
@@ -551,71 +507,64 @@ namespace GKCore.Export
             }
 
             if (persons.IndexOfObject(iRec) < 0) {
-                persons.AddObject(iRec.GetNameString(true, false), iRec);
+                persons.AddObject(GKUtils.GetNameString(iRec, true, false), iRec);
             }
         }
 
         private static void PrepareEventYear(StringList index, GEDCOMCustomEvent evt, GEDCOMIndividualRecord iRec)
         {
-            if (evt != null) {
-                int dtY = GEDCOMUtils.GetRelativeYear(evt);
-                if (dtY != 0) {
-                    PrepareSpecIndex(index, dtY.ToString(), iRec);
-                }
+            if (evt == null) return;
+
+            int dtY = GEDCOMUtils.GetRelativeYear(evt);
+            if (dtY != 0) {
+                PrepareSpecIndex(index, dtY.ToString(), iRec);
             }
         }
     }
-    
-    public class PDFWriterEvents : IPdfPageEvent
+
+    public sealed class PDFWriterEvents : IPdfPageEvent
     {
         private readonly BaseFont fFont;
         private readonly string fFooter;
 
         public PDFWriterEvents(BaseFont font, string footer)
         {
-            this.fFont = font;
-            this.fFooter = footer;
+            fFont = font;
+            fFooter = footer;
         }
 
-        public void OnOpenDocument(PdfWriter writer, Document document) { }
-        public void OnCloseDocument(PdfWriter writer, Document document) { }
-        public void OnStartPage(PdfWriter writer, Document document) { }
+        void IPdfPageEvent.OnOpenDocument(PdfWriter writer, Document document) { }
+        void IPdfPageEvent.OnCloseDocument(PdfWriter writer, Document document) { }
+        void IPdfPageEvent.OnStartPage(PdfWriter writer, Document document) { }
 
-        public void OnEndPage(PdfWriter writer, Document document)
+        void IPdfPageEvent.OnEndPage(PdfWriter writer, Document document)
         {
             if (writer.PageNumber == 1) return;
-            
-            try
-            {
-                PdfContentByte cb = writer.DirectContent;
-                Rectangle pageSize = document.PageSize;
-                string text = fFooter + writer.PageNumber;
-                
-                cb.SaveState();
-                cb.BeginText();
 
-                cb.SetFontAndSize(fFont, 9);
-                cb.ShowTextAligned(PdfContentByte.ALIGN_RIGHT, text,
-                                   pageSize.GetRight(document.RightMargin), pageSize.GetBottom(document.BottomMargin), 0);
-                
-                cb.EndText();
-                cb.RestoreState();
-            }
-            catch (DocumentException)
-            {
-                throw;
-            }
+            PdfContentByte cb = writer.DirectContent;
+            Rectangle pageSize = document.PageSize;
+            string text = fFooter + writer.PageNumber;
+
+            cb.SaveState();
+            cb.BeginText();
+
+            cb.SetFontAndSize(fFont, 9);
+            cb.ShowTextAligned(PdfContentByte.ALIGN_RIGHT, text,
+                               pageSize.GetRight(document.RightMargin), pageSize.GetBottom(document.BottomMargin), 0);
+
+            cb.EndText();
+            cb.RestoreState();
         }
 
-        public void OnParagraph(PdfWriter writer, Document document, float paragraphPosition) { }
-        public void OnParagraphEnd(PdfWriter writer, Document document, float paragraphPosition) { }
-        public void OnChapter(PdfWriter writer, Document document, float paragraphPosition, Paragraph title) { }
-        public void OnChapterEnd(PdfWriter writer, Document document, float paragraphPosition) { }
-        public void OnSection(PdfWriter writer, Document document, float paragraphPosition, int depth, Paragraph title) { }
-        public void OnSectionEnd(PdfWriter writer, Document document, float paragraphPosition) { }
-        public void OnGenericTag(PdfWriter writer, Document document, Rectangle rect, String text) { }
+        void IPdfPageEvent.OnParagraph(PdfWriter writer, Document document, float paragraphPosition) { }
+        void IPdfPageEvent.OnParagraphEnd(PdfWriter writer, Document document, float paragraphPosition) { }
+        void IPdfPageEvent.OnChapter(PdfWriter writer, Document document, float paragraphPosition, Paragraph title) { }
+        void IPdfPageEvent.OnChapterEnd(PdfWriter writer, Document document, float paragraphPosition) { }
+        void IPdfPageEvent.OnSection(PdfWriter writer, Document document, float paragraphPosition, int depth, Paragraph title) { }
+        void IPdfPageEvent.OnSectionEnd(PdfWriter writer, Document document, float paragraphPosition) { }
+        void IPdfPageEvent.OnGenericTag(PdfWriter writer, Document document, Rectangle rect, string text) { }
     }
-    
+
     public class SimpleColumnText : ColumnText
     {
         private readonly Document fDocument;
@@ -624,10 +573,10 @@ namespace GKCore.Export
 
         public SimpleColumnText(Document document, PdfContentByte content, int columnCount, float columnSpacing) : base(content)
         {
-            this.fDocument = document;
-            this.fColumns = new List<Rectangle>();
-            this.fCurrentColumn = 0;
-            this.CalculateColumnBoundries(columnCount, columnSpacing);
+            fDocument = document;
+            fColumns = new List<Rectangle>();
+            fCurrentColumn = 0;
+            CalculateColumnBoundries(columnCount, columnSpacing);
         }
 
         private void CalculateColumnBoundries(int columnCount, float columnSpacing)
@@ -653,21 +602,21 @@ namespace GKCore.Export
 
             int status = 0;
             if (fCurrentColumn == 0) {
-                status = ColumnText.NO_MORE_COLUMN;
+                status = NO_MORE_COLUMN;
             }
 
             do {
-                if (status == ColumnText.NO_MORE_COLUMN) {
+                if (status == NO_MORE_COLUMN) {
                     if (fCurrentColumn == fColumns.Count) {
                         fDocument.NewPage();
                         fCurrentColumn = 0;
                     }
-                    base.SetSimpleColumn(this.fColumns[fCurrentColumn]);
+                    SetSimpleColumn(fColumns[fCurrentColumn]);
                     fCurrentColumn += 1;
                 }
 
-                status = base.Go();
-            } while (ColumnText.HasMoreText(status));
+                status = Go();
+            } while (HasMoreText(status));
         }
     }
 }

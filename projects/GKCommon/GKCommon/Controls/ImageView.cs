@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,6 +20,7 @@
 
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace GKCommon.Controls
@@ -28,31 +29,46 @@ namespace GKCommon.Controls
     {
         public bool ShowToolbar
         {
-            get {
-                return this.toolStrip.Visible;
-            }
-            set {
-                this.toolStrip.Visible = value;
-            }
+            get { return toolStrip.Visible; }
+            set { toolStrip.Visible = value; }
         }
+
+        public ImageBoxSelectionMode SelectionMode
+        {
+            get { return imageBox.SelectionMode; }
+            set { imageBox.SelectionMode = value; }
+        }
+
+        public RectangleF SelectionRegion
+        {
+            get { return imageBox.SelectionRegion; }
+            set { imageBox.SelectionRegion = value; }
+        }
+
 
         public ImageView()
         {
             InitializeComponent();
 
-            this.FillZoomLevels();
+            FillZoomLevels();
             imageBox.ImageBorderStyle = ImageBoxBorderStyle.FixedSingleGlowShadow;
             imageBox.ImageBorderColor = Color.AliceBlue;
             imageBox.SelectionMode = ImageBoxSelectionMode.Zoom;
-            //imageBox.InvertMouse = false;
+            imageBox.AllowDoubleClick = false;
+            imageBox.AllowZoom = true;
+            imageBox.InterpolationMode = InterpolationMode.HighQualityBicubic;
         }
 
         public void OpenImage(Image image)
         {
+            if (image == null) return;
+
+            imageBox.BeginUpdate();
             imageBox.Image = image;
             imageBox.ZoomToFit();
+            imageBox.EndUpdate();
 
-            this.UpdateZoomLevels();
+            UpdateZoomLevels();
         }
 
         private void FillZoomLevels()
@@ -71,22 +87,22 @@ namespace GKCommon.Controls
         private void btnSizeToFit_Click(object sender, EventArgs e)
         {
             imageBox.ZoomToFit();
-            this.UpdateZoomLevels();
-        }
-
-        private void imageBox_ZoomChanged(object sender, EventArgs e)
-        {
-            this.UpdateZoomLevels();
-        }
-
-        private void imageBox_ZoomLevelsChanged(object sender, EventArgs e)
-        {
-            this.FillZoomLevels();
+            UpdateZoomLevels();
         }
 
         private void btnZoomIn_Click(object sender, EventArgs e)
         {
             imageBox.ZoomIn();
+        }
+
+        private void btnZoomOut_Click(object sender, EventArgs e)
+        {
+            imageBox.ZoomOut();
+        }
+
+        private void imageBox_ZoomChanged(object sender, EventArgs e)
+        {
+            UpdateZoomLevels();
         }
 
         private void zoomLevelsToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -95,9 +111,10 @@ namespace GKCommon.Controls
             imageBox.Zoom = zoom;
         }
 
-        private void btnZoomOut_Click(object sender, EventArgs e)
+        protected override void Select(bool directed, bool forward)
         {
-            imageBox.ZoomOut();
+            base.Select(directed, forward);
+            imageBox.Select();
         }
     }
 }

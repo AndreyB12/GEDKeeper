@@ -25,10 +25,13 @@ namespace GKUI.Dialogs
 		    this.btnCancel = new System.Windows.Forms.Button();
 		    this.PageControl1 = new System.Windows.Forms.TabControl();
 		    this.pageAuthor = new System.Windows.Forms.TabPage();
+		    this.btnLangEdit = new System.Windows.Forms.Button();
 		    this.lblName = new System.Windows.Forms.Label();
 		    this.lblAddress = new System.Windows.Forms.Label();
+		    this.lblLanguage = new System.Windows.Forms.Label();
 		    this.lblTelephone = new System.Windows.Forms.Label();
 		    this.txtName = new System.Windows.Forms.TextBox();
+		    this.txtLanguage = new System.Windows.Forms.TextBox();
 		    this.txtTel = new System.Windows.Forms.TextBox();
 		    this.txtAddress = new System.Windows.Forms.TextBox();
 		    this.pageOther = new System.Windows.Forms.TabPage();
@@ -44,8 +47,9 @@ namespace GKUI.Dialogs
 		    // 
 		    this.btnAccept.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
 		    this.btnAccept.Location = new System.Drawing.Point(381, 359);
+		    this.btnAccept.Margin = new System.Windows.Forms.Padding(2);
 		    this.btnAccept.Name = "btnAccept";
-		    this.btnAccept.Size = new System.Drawing.Size(113, 31);
+		    this.btnAccept.Size = new System.Drawing.Size(112, 31);
 		    this.btnAccept.TabIndex = 1;
 		    this.btnAccept.Text = "btnAccept";
 		    this.btnAccept.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -56,8 +60,9 @@ namespace GKUI.Dialogs
 		    this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
 		    this.btnCancel.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
 		    this.btnCancel.Location = new System.Drawing.Point(504, 359);
+		    this.btnCancel.Margin = new System.Windows.Forms.Padding(2);
 		    this.btnCancel.Name = "btnCancel";
-		    this.btnCancel.Size = new System.Drawing.Size(113, 31);
+		    this.btnCancel.Size = new System.Drawing.Size(112, 31);
 		    this.btnCancel.TabIndex = 2;
 		    this.btnCancel.Text = "btnCancel";
 		    this.btnCancel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -67,6 +72,7 @@ namespace GKUI.Dialogs
 		    this.PageControl1.Controls.Add(this.pageAuthor);
 		    this.PageControl1.Controls.Add(this.pageOther);
 		    this.PageControl1.Location = new System.Drawing.Point(11, 10);
+		    this.PageControl1.Margin = new System.Windows.Forms.Padding(2);
 		    this.PageControl1.Name = "PageControl1";
 		    this.PageControl1.SelectedIndex = 0;
 		    this.PageControl1.Size = new System.Drawing.Size(606, 331);
@@ -74,22 +80,36 @@ namespace GKUI.Dialogs
 		    // 
 		    // pageAuthor
 		    // 
+		    this.pageAuthor.Controls.Add(this.btnLangEdit);
 		    this.pageAuthor.Controls.Add(this.lblName);
 		    this.pageAuthor.Controls.Add(this.lblAddress);
+		    this.pageAuthor.Controls.Add(this.lblLanguage);
 		    this.pageAuthor.Controls.Add(this.lblTelephone);
 		    this.pageAuthor.Controls.Add(this.txtName);
+		    this.pageAuthor.Controls.Add(this.txtLanguage);
 		    this.pageAuthor.Controls.Add(this.txtTel);
 		    this.pageAuthor.Controls.Add(this.txtAddress);
 		    this.pageAuthor.Location = new System.Drawing.Point(4, 26);
+		    this.pageAuthor.Margin = new System.Windows.Forms.Padding(2);
 		    this.pageAuthor.Name = "pageAuthor";
 		    this.pageAuthor.Size = new System.Drawing.Size(598, 301);
 		    this.pageAuthor.TabIndex = 0;
 		    this.pageAuthor.Text = "pageAuthor";
 		    // 
+		    // btnLangEdit
+		    // 
+		    this.btnLangEdit.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+		    this.btnLangEdit.Location = new System.Drawing.Point(545, 220);
+		    this.btnLangEdit.Name = "btnLangEdit";
+		    this.btnLangEdit.Size = new System.Drawing.Size(39, 34);
+		    this.btnLangEdit.TabIndex = 6;
+		    this.btnLangEdit.Click += new System.EventHandler(this.btnLangEdit_Click);
+		    // 
 		    // lblName
 		    // 
 		    this.lblName.AutoSize = true;
-		    this.lblName.Location = new System.Drawing.Point(11, 10);
+		    this.lblName.Location = new System.Drawing.Point(11, 14);
+		    this.lblName.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
 		    this.lblName.Name = "lblName";
 		    this.lblName.Size = new System.Drawing.Size(55, 17);
 		    this.lblName.TabIndex = 0;
@@ -99,15 +119,27 @@ namespace GKUI.Dialogs
 		    // 
 		    this.lblAddress.AutoSize = true;
 		    this.lblAddress.Location = new System.Drawing.Point(11, 39);
+		    this.lblAddress.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
 		    this.lblAddress.Name = "lblAddress";
 		    this.lblAddress.Size = new System.Drawing.Size(68, 17);
 		    this.lblAddress.TabIndex = 2;
 		    this.lblAddress.Text = "lblAddress";
 		    // 
+		    // lblLanguage
+		    // 
+		    this.lblLanguage.AutoSize = true;
+		    this.lblLanguage.Location = new System.Drawing.Point(11, 229);
+		    this.lblLanguage.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+		    this.lblLanguage.Name = "lblLanguage";
+		    this.lblLanguage.Size = new System.Drawing.Size(80, 17);
+		    this.lblLanguage.TabIndex = 4;
+		    this.lblLanguage.Text = "lblLanguage";
+		    // 
 		    // lblTelephone
 		    // 
 		    this.lblTelephone.AutoSize = true;
-		    this.lblTelephone.Location = new System.Drawing.Point(11, 185);
+		    this.lblTelephone.Location = new System.Drawing.Point(11, 189);
+		    this.lblTelephone.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
 		    this.lblTelephone.Name = "lblTelephone";
 		    this.lblTelephone.Size = new System.Drawing.Size(83, 17);
 		    this.lblTelephone.TabIndex = 4;
@@ -115,30 +147,43 @@ namespace GKUI.Dialogs
 		    // 
 		    // txtName
 		    // 
-		    this.txtName.Location = new System.Drawing.Point(117, 10);
+		    this.txtName.Location = new System.Drawing.Point(145, 10);
+		    this.txtName.Margin = new System.Windows.Forms.Padding(2);
 		    this.txtName.Name = "txtName";
-		    this.txtName.Size = new System.Drawing.Size(467, 24);
+		    this.txtName.Size = new System.Drawing.Size(439, 24);
 		    this.txtName.TabIndex = 1;
+		    // 
+		    // txtLanguage
+		    // 
+		    this.txtLanguage.Location = new System.Drawing.Point(145, 226);
+		    this.txtLanguage.Margin = new System.Windows.Forms.Padding(2);
+		    this.txtLanguage.Name = "txtLanguage";
+		    this.txtLanguage.ReadOnly = true;
+		    this.txtLanguage.Size = new System.Drawing.Size(386, 24);
+		    this.txtLanguage.TabIndex = 5;
 		    // 
 		    // txtTel
 		    // 
-		    this.txtTel.Location = new System.Drawing.Point(117, 185);
+		    this.txtTel.Location = new System.Drawing.Point(145, 185);
+		    this.txtTel.Margin = new System.Windows.Forms.Padding(2);
 		    this.txtTel.Name = "txtTel";
-		    this.txtTel.Size = new System.Drawing.Size(467, 24);
+		    this.txtTel.Size = new System.Drawing.Size(439, 24);
 		    this.txtTel.TabIndex = 5;
 		    // 
 		    // txtAddress
 		    // 
-		    this.txtAddress.Location = new System.Drawing.Point(117, 39);
+		    this.txtAddress.Location = new System.Drawing.Point(145, 39);
+		    this.txtAddress.Margin = new System.Windows.Forms.Padding(2);
 		    this.txtAddress.Multiline = true;
 		    this.txtAddress.Name = "txtAddress";
-		    this.txtAddress.Size = new System.Drawing.Size(467, 137);
+		    this.txtAddress.Size = new System.Drawing.Size(439, 136);
 		    this.txtAddress.TabIndex = 3;
 		    // 
 		    // pageOther
 		    // 
 		    this.pageOther.Controls.Add(this.lvRecordStats);
 		    this.pageOther.Location = new System.Drawing.Point(4, 26);
+		    this.pageOther.Margin = new System.Windows.Forms.Padding(2);
 		    this.pageOther.Name = "pageOther";
 		    this.pageOther.Size = new System.Drawing.Size(598, 301);
 		    this.pageOther.TabIndex = 1;
@@ -152,6 +197,7 @@ namespace GKUI.Dialogs
 		    this.lvRecordStats.Dock = System.Windows.Forms.DockStyle.Fill;
 		    this.lvRecordStats.FullRowSelect = true;
 		    this.lvRecordStats.Location = new System.Drawing.Point(0, 0);
+		    this.lvRecordStats.Margin = new System.Windows.Forms.Padding(2);
 		    this.lvRecordStats.MultiSelect = false;
 		    this.lvRecordStats.Name = "lvRecordStats";
 		    this.lvRecordStats.Size = new System.Drawing.Size(598, 301);
@@ -182,6 +228,7 @@ namespace GKUI.Dialogs
 		    this.Controls.Add(this.PageControl1);
 		    this.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
 		    this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+		    this.Margin = new System.Windows.Forms.Padding(2);
 		    this.MaximizeBox = false;
 		    this.MinimizeBox = false;
 		    this.Name = "FilePropertiesDlg";
@@ -194,5 +241,8 @@ namespace GKUI.Dialogs
 		    this.pageOther.ResumeLayout(false);
 		    this.ResumeLayout(false);
 		}
+		private System.Windows.Forms.Button btnLangEdit;
+		private System.Windows.Forms.TextBox txtLanguage;
+		private System.Windows.Forms.Label lblLanguage;
 	}
 }

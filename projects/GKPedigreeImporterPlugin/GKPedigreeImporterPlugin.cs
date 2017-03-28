@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -26,11 +26,11 @@ using System.Runtime.InteropServices;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKPedigreeImporterPlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 PedigreeImporter plugin")]
+[assembly: AssemblyDescription("GEDKeeper PedigreeImporter plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014,2016, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014,2016 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -84,18 +84,12 @@ namespace GKPedigreeImporterPlugin
     
     public class PlugIn : IPlugin
     {
-        private const string DISPLAY_NAME = "GKPedigreeImporterPlugin";
-
+        private string fDisplayName = "GKPedigreeImporterPlugin";
         private IHost fHost;
         private ILangMan fLangMan;
 
-        public string DisplayName {
-            get {
-                return (fLangMan == null) ? DISPLAY_NAME : this.fLangMan.LS(ILS.LSID_PluginTitle);
-            }
-        }
-
-        public IHost Host { get { return this.fHost; } }
+        public string DisplayName { get { return fDisplayName; } }
+        public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
 
         public void Execute()
@@ -103,7 +97,7 @@ namespace GKPedigreeImporterPlugin
             IBaseWindow curBase = fHost.GetCurrentFile();
             if (curBase == null) return;
 
-            PedigreeImporterDlg frm = new PedigreeImporterDlg(this);
+            PedigreeImporterDlg frm = new PedigreeImporterDlg(this, curBase);
             frm.ShowDialog();
         }
 
@@ -115,7 +109,8 @@ namespace GKPedigreeImporterPlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(ILS.LSID_PluginTitle);
             }
             catch (Exception ex)
             {
@@ -128,8 +123,7 @@ namespace GKPedigreeImporterPlugin
             bool result = true;
             try
             {
-                this.fHost = host;
-                // Implement any startup code here
+                fHost = host;
             }
             catch (Exception ex)
             {
@@ -144,7 +138,6 @@ namespace GKPedigreeImporterPlugin
             bool result = true;
             try
             {
-                // Implement any shutdown code here
             }
             catch (Exception ex)
             {

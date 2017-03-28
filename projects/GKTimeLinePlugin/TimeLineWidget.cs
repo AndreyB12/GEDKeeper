@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -32,7 +32,7 @@ namespace GKTimeLinePlugin
     /// <summary>
     /// 
     /// </summary>
-    public partial class TimeLineWidget : Form
+    public partial class TimeLineWidget : Form, ILocalization
     {
         private readonly Plugin fPlugin;
 
@@ -41,88 +41,87 @@ namespace GKTimeLinePlugin
         private int fYearMax;
         private int fYearCurrent;
 
-        public TimeLineWidget(Plugin plugin) : base()
+        public TimeLineWidget(Plugin plugin)
         {
-            this.InitializeComponent();
-            
-            this.fPlugin = plugin;
-            
-            this.Text = this.fPlugin.LangMan.LS(PLS.LSID_MITimeLine);
-            
-            this.Location = new Point(10, Screen.PrimaryScreen.WorkingArea.Height - this.Height - 10);
+            InitializeComponent();
+
+            Location = new Point(10, Screen.PrimaryScreen.WorkingArea.Height - Height - 10);
+
+            fPlugin = plugin;
+
+            SetLang();
         }
 
         private void TimeLineWidget_Load(object sender, EventArgs e)
         {
-            this.fPlugin.Host.WidgetShow(this.fPlugin);
-            this.BaseChanged(this.fPlugin.Host.GetCurrentFile());
+            fPlugin.Host.WidgetShow(fPlugin);
+            BaseChanged(fPlugin.Host.GetCurrentFile());
         }
 
         private void TimeLineWidget_Closed(object sender, EventArgs e)
         {
-            this.BaseChanged(null);
-            this.fPlugin.Host.WidgetClose(this.fPlugin);
+            BaseChanged(null);
+            fPlugin.Host.WidgetClose(fPlugin);
         }
 
-        public void BaseChanged(IBaseWindow aBase)
+        public void BaseChanged(IBaseWindow baseWin)
         {
-            if (this.fBase != aBase && this.fBase != null)
+            if (fBase != baseWin && fBase != null)
             {
-                IListManager listMan = this.fBase.GetRecordsListManByType(GEDCOMRecordType.rtIndividual);
-                
+                IListManager listMan = fBase.GetRecordsListManByType(GEDCOMRecordType.rtIndividual);
+
                 listMan.ExternalFilter = null;
                 ((IIndividualListFilter)listMan.Filter).FilterLifeMode = FilterLifeMode.lmAll;
-                
-                this.fBase.ApplyFilter(GEDCOMRecordType.rtIndividual);
+
+                fBase.ApplyFilter(GEDCOMRecordType.rtIndividual);
             }
 
-            this.fBase = aBase;
+            fBase = baseWin;
 
-            this.fYearMin = 10000;
-            this.fYearMax = 0;
-            this.fYearCurrent = -1;
+            fYearMin = 10000;
+            fYearMax = 0;
+            fYearCurrent = -1;
 
-            if (this.fBase != null)
+            if (fBase != null)
             {
-                IListManager listMan = this.fBase.GetRecordsListManByType(GEDCOMRecordType.rtIndividual);
+                IListManager listMan = fBase.GetRecordsListManByType(GEDCOMRecordType.rtIndividual);
 
-                ((IIndividualListFilter)listMan.Filter).FilterLifeMode = FilterLifeMode.lmTimeLocked;
-                listMan.ExternalFilter = this.FilterHandler;
+                if (listMan != null)
+                {
+                    ((IIndividualListFilter)listMan.Filter).FilterLifeMode = FilterLifeMode.lmTimeLocked;
+                    listMan.ExternalFilter = FilterHandler;
 
-                this.CollectData();
-                
-                this.fBase.ApplyFilter(GEDCOMRecordType.rtIndividual);
+                    CollectData();
+
+                    fBase.ApplyFilter(GEDCOMRecordType.rtIndividual);
+                }
             }
 
-            this.UpdateControls();
+            UpdateControls();
         }
 
         private void CollectData()
         {
-            GEDCOMTree tree = this.fBase.Tree;
-
-            int num = tree.RecordsCount;
+            int num = fBase.Tree.RecordsCount;
             for (int i = 0; i < num; i++)
             {
-                GEDCOMRecord rec = tree[i];
+                GEDCOMRecord rec = fBase.Tree[i];
+                if (rec.RecordType != GEDCOMRecordType.rtIndividual) continue;
 
-                if (rec.RecordType == GEDCOMRecordType.rtIndividual)
+                GEDCOMIndividualRecord iRec = (GEDCOMIndividualRecord)rec;
+
+                int num2 = iRec.Events.Count;
+                for (int k = 0; k < num2; k++)
                 {
-                    GEDCOMIndividualRecord iRec = (GEDCOMIndividualRecord)rec;
+                    GEDCOMCustomEvent ev = iRec.Events[k];
 
-                    int num2 = iRec.Events.Count;
-                    for (int k = 0; k < num2; k++)
+                    if (ev.Name == "BIRT" || ev.Name == "DEAT")
                     {
-                        GEDCOMCustomEvent ev = iRec.Events[k];
-
-                        if (ev.Name == "BIRT" || ev.Name == "DEAT")
+                        int year = GEDCOMUtils.GetRelativeYear(ev);
+                        if (year != 0)
                         {
-                            int year = GEDCOMUtils.GetRelativeYear(ev);
-                            if (year != 0)
-                            {
-                                if (this.fYearMin > year) this.fYearMin = year;
-                                if (this.fYearMax < year) this.fYearMax = year;
-                            }
+                            if (fYearMin > year) fYearMin = year;
+                            if (fYearMax < year) fYearMax = year;
                         }
                     }
                 }
@@ -131,29 +130,29 @@ namespace GKTimeLinePlugin
 
         private void tbTimeLine_ValueChanged(object sender, EventArgs e)
         {
-            if (this.fBase != null) {
-                this.fYearCurrent = this.tbTimeLine.Value;
-                this.fBase.ApplyFilter(GEDCOMRecordType.rtIndividual);
+            if (fBase != null) {
+                fYearCurrent = tbTimeLine.Value;
+                fBase.ApplyFilter(GEDCOMRecordType.rtIndividual);
             }
-            this.StatusUpdate();
+            StatusUpdate();
         }
 
         private void StatusUpdate()
         {
-            if (this.fBase != null) {
-                this.StatusBarPanel1.Text = string.Format(this.fPlugin.LangMan.LS(PLS.LSID_TimeScale), this.fYearMin.ToString(), this.fYearMax.ToString());
-                this.StatusBarPanel2.Text = string.Format(this.fPlugin.LangMan.LS(PLS.LSID_CurrentYear), this.fYearCurrent.ToString());
+            if (fBase != null) {
+                StatusBarPanel1.Text = string.Format(fPlugin.LangMan.LS(PLS.LSID_TimeScale), fYearMin.ToString(), fYearMax.ToString());
+                StatusBarPanel2.Text = string.Format(fPlugin.LangMan.LS(PLS.LSID_CurrentYear), fYearCurrent.ToString());
             } else {
-                this.StatusBarPanel1.Text = "";
-                this.StatusBarPanel2.Text = "";
+                StatusBarPanel1.Text = "";
+                StatusBarPanel2.Text = "";
             }
         }
 
         private void UpdateControls()
         {
-            int max = this.fYearMax + 1;
-            int min = this.fYearMin - 1;
-            int cur = this.fYearCurrent;
+            int max = fYearMax + 1;
+            int min = fYearMin - 1;
+            int cur = fYearCurrent;
             if (min > max) {
                 int x = min;
                 min = max;
@@ -162,13 +161,13 @@ namespace GKTimeLinePlugin
             if (cur < min) cur = min;
             if (cur > max) cur = max;
 
-            this.tbTimeLine.ValueChanged -= this.tbTimeLine_ValueChanged;
-            this.tbTimeLine.Maximum = max;
-            this.tbTimeLine.Minimum = min;
-            this.tbTimeLine.Value = cur;
-            this.tbTimeLine.ValueChanged += this.tbTimeLine_ValueChanged;
+            tbTimeLine.ValueChanged -= tbTimeLine_ValueChanged;
+            tbTimeLine.Maximum = max;
+            tbTimeLine.Minimum = min;
+            tbTimeLine.Value = cur;
+            tbTimeLine.ValueChanged += tbTimeLine_ValueChanged;
 
-            this.StatusUpdate();
+            StatusUpdate();
         }
 
         // FIXME: perhaps it is necessary to define the maximum age by statistics
@@ -190,16 +189,27 @@ namespace GKTimeLinePlugin
                     bdy = ddy - GKConsts.PROVED_LIFE_LENGTH;
                 }
 
-                if (this.fYearCurrent > 0) {
-                    result = (this.fYearCurrent >= bdy && this.fYearCurrent <= ddy);
+                if (fYearCurrent > 0) {
+                    result = (fYearCurrent >= bdy && fYearCurrent <= ddy);
                 }
             }
             catch (Exception ex)
             {
-                this.fPlugin.Host.LogWrite("TimeLineWidget.FilterHandler(): " + ex.Message);
+                fPlugin.Host.LogWrite("TimeLineWidget.FilterHandler(): " + ex.Message);
             }
 
             return result;
         }
+
+        #region ILocalization support
+
+        public void SetLang()
+        {
+            Text = fPlugin.LangMan.LS(PLS.LSID_MITimeLine);
+
+            StatusUpdate();
+        }
+
+        #endregion
     }
 }

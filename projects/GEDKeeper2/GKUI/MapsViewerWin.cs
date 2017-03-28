@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,8 +25,8 @@ using System.Windows.Forms;
 using GKCommon;
 using GKCommon.GEDCOM;
 using GKCore;
+using GKCore.Geocoding;
 using GKCore.Interfaces;
-using GKCore.Maps;
 using GKUI.Controls;
 
 namespace GKUI
@@ -43,29 +43,28 @@ namespace GKUI
 
             public PlaceRef(GEDCOMCustomEvent evt)
             {
-                this.Event = evt;
-                this.Date = (evt == null) ? new DateTime(0) : evt.Detail.Date.GetDateTime();
+                Event = evt;
+                Date = (evt == null) ? new DateTime(0) : evt.Date.GetDateTime();
             }
         }
 
         private class MapPlace : BaseObject
         {
             public string Name;
-            public readonly ExtList<GMapPoint> Points;
+            public readonly IList<GeoPoint> Points;
             public readonly ExtList<PlaceRef> PlaceRefs;
 
             public MapPlace()
             {
-                this.Points = new ExtList<GMapPoint>(true);
-                this.PlaceRefs = new ExtList<PlaceRef>(false);
+                Points = new List<GeoPoint>();
+                PlaceRefs = new ExtList<PlaceRef>(false);
             }
 
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
                 {
-                    this.PlaceRefs.Dispose();
-                    this.Points.Dispose();
+                    PlaceRefs.Dispose();
                 }
                 base.Dispose(disposing);
             }
@@ -73,7 +72,7 @@ namespace GKUI
 
         private readonly TreeNode fBaseRoot;
         private readonly GKMapBrowser fMapBrowser;
-        private readonly ExtList<GMapPoint> fMapPoints;
+        private readonly ExtList<GeoPoint> fMapPoints;
         private readonly ExtList<MapPlace> fPlaces;
         private readonly List<GEDCOMRecord> fSelectedPersons;
         private readonly IBaseWindow fBase;
@@ -81,7 +80,7 @@ namespace GKUI
 
         private bool IsSelected(GEDCOMRecord iRec)
         {
-            bool res = (this.fSelectedPersons == null || (this.fSelectedPersons != null && this.fSelectedPersons.IndexOf(iRec) >= 0));
+            bool res = (fSelectedPersons == null || (fSelectedPersons != null && fSelectedPersons.IndexOf(iRec) >= 0));
             return res;
         }
 
@@ -89,22 +88,22 @@ namespace GKUI
         {
             try
             {
-                this.fMapBrowser.InitMap();
+                fMapBrowser.InitMap();
 
-                this.cmbPersons.BeginUpdate();
-                this.tvPlaces.BeginUpdate();
-                this.fBase.ProgressInit(LangMan.LS(LSID.LSID_LoadingLocations), this.fTree.RecordsCount);
+                cmbPersons.BeginUpdate();
+                tvPlaces.BeginUpdate();
+                fBase.ProgressInit(LangMan.LS(LSID.LSID_LoadingLocations), fTree.RecordsCount);
                 try
                 {
-                    this.fPlaces.Clear();
-                    this.cmbPersons.Items.Clear();
-                    this.cmbPersons.Sorted = false;
-                    this.cmbPersons.Items.Add(new GKComboItem(LangMan.LS(LSID.LSID_NotSelected), null));
+                    fPlaces.Clear();
+                    cmbPersons.Items.Clear();
+                    cmbPersons.Sorted = false;
+                    cmbPersons.Items.Add(new GKComboItem(LangMan.LS(LSID.LSID_NotSelected), null));
 
-                    int num = this.fTree.RecordsCount;
+                    int num = fTree.RecordsCount;
                     for (int i = 0; i < num; i++) {
-                        GEDCOMRecord rec = this.fTree[i];
-                        bool res = rec is GEDCOMIndividualRecord && this.IsSelected(rec);
+                        GEDCOMRecord rec = fTree[i];
+                        bool res = rec is GEDCOMIndividualRecord && IsSelected(rec);
 
                         if (res) {
                             GEDCOMIndividualRecord ind = rec as GEDCOMIndividualRecord;
@@ -114,30 +113,30 @@ namespace GKUI
                             for (int j = 0; j < num2; j++)
                             {
                                 GEDCOMCustomEvent ev = ind.Events[j];
-                                if (ev.Detail.Place.StringValue != "") {
-                                    AddPlace(ev.Detail.Place, ev);
+                                if (ev.Place.StringValue != "") {
+                                    AddPlace(ev.Place, ev);
                                     pCnt++;
                                 }
                             }
 
                             if (pCnt > 0) {
-                                this.cmbPersons.Items.Add(new GKComboItem(ind.GetNameString(true, false) + " [" + pCnt.ToString() + "]", ind));
+                                cmbPersons.Items.Add(new GKComboItem(GKUtils.GetNameString(ind, true, false) + " [" + pCnt.ToString() + "]", ind));
                             }
                         }
 
-                        this.fBase.ProgressStep();
+                        fBase.ProgressStep();
                     }
 
-                    this.fBaseRoot.ExpandAll();
-                    this.cmbPersons.Sorted = true;
+                    fBaseRoot.ExpandAll();
+                    cmbPersons.Sorted = true;
 
-                    this.btnSelectPlaces.Enabled = true;
+                    btnSelectPlaces.Enabled = true;
                 }
                 finally
                 {
-                    this.fBase.ProgressDone();
-                    this.tvPlaces.EndUpdate();
-                    this.cmbPersons.EndUpdate();
+                    fBase.ProgressDone();
+                    tvPlaces.EndUpdate();
+                    cmbPersons.EndUpdate();
                 }
             }
             catch (Exception ex)
@@ -146,45 +145,45 @@ namespace GKUI
             }
         }
 
-        private void PreparePointsList(ExtList<GMapPoint> gmapPoints, bool byPerson)
+        private void PreparePointsList(ExtList<GeoPoint> gmapPoints, bool byPerson)
         {
-            this.fMapBrowser.BeginUpdate();
+            fMapBrowser.BeginUpdate();
             try
             {
-                this.fMapBrowser.ClearPoints();
+                fMapBrowser.ClearPoints();
 
                 int num = gmapPoints.Count;
                 for (int i = 0; i < num; i++)
                 {
-                    GMapPoint pt = gmapPoints[i];
+                    GeoPoint pt = gmapPoints[i];
                     string stHint = pt.Hint;
                     if (byPerson)
                     {
                         stHint = stHint + " [" + pt.Date.ToString() + "]";
                     }
 
-                    this.fMapBrowser.AddPoint(pt.Latitude, pt.Longitude, stHint);
+                    fMapBrowser.AddPoint(pt.Latitude, pt.Longitude, stHint);
                 }
-                this.fMapBrowser.ZoomToBounds();
+                fMapBrowser.ZoomToBounds();
             }
             finally
             {
-                this.fMapBrowser.EndUpdate();
+                fMapBrowser.EndUpdate();
             }
         }
 
         private void radTotal_Click(object sender, EventArgs e)
         {
-            this.chkBirth.Enabled = this.radTotal.Checked;
-            this.chkDeath.Enabled = this.radTotal.Checked;
-            this.chkResidence.Enabled = this.radTotal.Checked;
-            this.cmbPersons.Enabled = this.radSelected.Checked;
-            this.chkLinesVisible.Enabled = this.radSelected.Checked;
+            chkBirth.Enabled = radTotal.Checked;
+            chkDeath.Enabled = radTotal.Checked;
+            chkResidence.Enabled = radTotal.Checked;
+            cmbPersons.Enabled = radSelected.Checked;
+            chkLinesVisible.Enabled = radSelected.Checked;
         }
 
         private void MapsViewerWin_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Escape) base.Close();
+            if (e.KeyCode == Keys.Escape) Close();
         }
 
         // TODO: localize?
@@ -195,7 +194,7 @@ namespace GKUI
             string fileName = UIHelper.GetSaveFile("", "", filter1, 2, "jpg", "");
             if (!string.IsNullOrEmpty(fileName))
             {
-                this.fMapBrowser.SaveSnapshot(fileName);
+                fMapBrowser.SaveSnapshot(fileName);
             }
         }
 
@@ -207,37 +206,35 @@ namespace GKUI
             bool condDeath = false;
             bool condResidence = false;
 
-            if (this.radTotal.Checked) {
-                condBirth = this.chkBirth.Checked;
-                condDeath = this.chkDeath.Checked;
-                condResidence = this.chkResidence.Checked;
-            } else if (this.radSelected.Checked) {
-                if (this.cmbPersons.SelectedIndex >= 0)
+            if (radTotal.Checked) {
+                condBirth = chkBirth.Checked;
+                condDeath = chkDeath.Checked;
+                condResidence = chkResidence.Checked;
+            } else if (radSelected.Checked) {
+                if (cmbPersons.SelectedIndex >= 0)
                 {
-                    GKComboItem item = (GKComboItem)this.cmbPersons.Items[this.cmbPersons.SelectedIndex];
+                    GKComboItem item = (GKComboItem)cmbPersons.Items[cmbPersons.SelectedIndex];
                     ind = (item.Tag as GEDCOMIndividualRecord);
                 }
             }
 
-            this.fMapBrowser.ShowLines = (ind != null && this.chkLinesVisible.Checked);
-            this.fMapPoints.Clear();
+            fMapBrowser.ShowLines = (ind != null && chkLinesVisible.Checked);
+            fMapPoints.Clear();
 
-            int num = this.fPlaces.Count;
+            int num = fPlaces.Count;
             for (int i = 0; i < num; i++)
             {
-                MapPlace place = this.fPlaces[i];
+                MapPlace place = fPlaces[i];
+                if (place.Points.Count < 1) continue;
 
-                if (place.Points.Count >= 1)
+                int num2 = place.PlaceRefs.Count;
+                for (int j = 0; j < num2; j++)
                 {
-                    int num2 = place.PlaceRefs.Count;
-                    for (int j = 0; j < num2; j++)
-                    {
-                        GEDCOMCustomEvent evt = place.PlaceRefs[j].Event;
+                    GEDCOMCustomEvent evt = place.PlaceRefs[j].Event;
 
-                        if ((ind != null && (evt.Parent == ind)) || (condBirth && evt.Name == "BIRT") || (condDeath && evt.Name == "DEAT") || (condResidence && evt.Name == "RESI"))
-                        {
-                            this.CopyPoint(place.Points[0], place.PlaceRefs[j]);
-                        }
+                    if ((ind != null && (evt.Parent == ind)) || (condBirth && evt.Name == "BIRT") || (condDeath && evt.Name == "DEAT") || (condResidence && evt.Name == "RESI"))
+                    {
+                        CopyPoint(place.Points[0], place.PlaceRefs[j]);
                     }
                 }
             }
@@ -245,74 +242,74 @@ namespace GKUI
             if (ind != null)
             {
                 // sort points by date
-                this.fMapPoints.QuickSort(MapPointsCompare);
+                fMapPoints.QuickSort(MapPointsCompare);
             }
 
-            this.PreparePointsList(this.fMapPoints, ind != null);
+            PreparePointsList(fMapPoints, ind != null);
         }
 
-        private static int MapPointsCompare(GMapPoint item1, GMapPoint item2)
+        private static int MapPointsCompare(GeoPoint item1, GeoPoint item2)
         {
             return item1.Date.CompareTo(item2.Date);
         }
 
         private void TreePlaces_DoubleClick(object sender, EventArgs e)
         {
-            GKTreeNode node = this.tvPlaces.SelectedNode as GKTreeNode;
-            if (node != null)
-            {
-                GMapPoint pt = node.Tag as GMapPoint;
-                if (pt != null)
-                {
-                    this.fMapBrowser.SetCenter(pt.Latitude, pt.Longitude, -1);
-                }
-            }
+            GKTreeNode node = tvPlaces.SelectedNode as GKTreeNode;
+            if (node == null) return;
+
+            GeoPoint pt = node.Tag as GeoPoint;
+            if (pt == null) return;
+
+            fMapBrowser.SetCenter(pt.Latitude, pt.Longitude, -1);
         }
 
         public void ProcessMap()
         {
-            this.Show();
-            this.PlacesLoad();
+            Show();
+            PlacesLoad();
         }
 
-        public MapsViewerWin(IBaseWindow aBase)
+        public MapsViewerWin(IBaseWindow baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.fBase = aBase;
-            this.fTree = aBase.Tree;
-            this.fSelectedPersons = aBase.GetContentList(GEDCOMRecordType.rtIndividual);
-            this.fMapBrowser = new GKMapBrowser();
-            this.fMapBrowser.Dock = DockStyle.Fill;
-            this.Panel1.Controls.Add(this.fMapBrowser);
-            this.fMapPoints = new ExtList<GMapPoint>(true);
-            this.fPlaces = new ExtList<MapPlace>(true);
-            this.fBaseRoot = this.tvPlaces.Nodes.Add(LangMan.LS(LSID.LSID_RPLocations));
-            this.radTotal.Checked = true;
+            fMapBrowser = new GKMapBrowser();
+            fMapBrowser.Dock = DockStyle.Fill;
+            Panel1.Controls.Add(fMapBrowser);
 
-            this.SetLang();
+            fBase = baseWin;
+            fTree = baseWin.Tree;
+            fSelectedPersons = baseWin.GetContentList(GEDCOMRecordType.rtIndividual);
+
+            fMapPoints = new ExtList<GeoPoint>(true);
+            fPlaces = new ExtList<MapPlace>(true);
+            fBaseRoot = tvPlaces.Nodes.Add(LangMan.LS(LSID.LSID_RPLocations));
+            radTotal.Checked = true;
+
+            SetLang();
         }
 
         public void SetLang()
         {
-            this.Text = LangMan.LS(LSID.LSID_MIMap);
-            this.pagePlaces.Text = LangMan.LS(LSID.LSID_RPLocations);
-            this.grpSelection.Text = LangMan.LS(LSID.LSID_MapSelection);
-            this.radTotal.Text = LangMan.LS(LSID.LSID_MapSelOnAll);
-            this.chkBirth.Text = LangMan.LS(LSID.LSID_MSBirthPlaces);
-            this.chkDeath.Text = LangMan.LS(LSID.LSID_MSDeathPlaces);
-            this.chkResidence.Text = LangMan.LS(LSID.LSID_MSResiPlace);
-            this.radSelected.Text = LangMan.LS(LSID.LSID_MapSelOnSelected);
-            this.btnSaveImage.Text = LangMan.LS(LSID.LSID_SaveImage);
-            this.btnSelectPlaces.Text = LangMan.LS(LSID.LSID_Show);
-            this.chkLinesVisible.Text = LangMan.LS(LSID.LSID_LinesVisible);
+            Text = LangMan.LS(LSID.LSID_MIMap);
+            pagePlaces.Text = LangMan.LS(LSID.LSID_RPLocations);
+            grpSelection.Text = LangMan.LS(LSID.LSID_MapSelection);
+            radTotal.Text = LangMan.LS(LSID.LSID_MapSelOnAll);
+            chkBirth.Text = LangMan.LS(LSID.LSID_MSBirthPlaces);
+            chkDeath.Text = LangMan.LS(LSID.LSID_MSDeathPlaces);
+            chkResidence.Text = LangMan.LS(LSID.LSID_MSResiPlace);
+            radSelected.Text = LangMan.LS(LSID.LSID_MapSelOnSelected);
+            btnSaveImage.Text = LangMan.LS(LSID.LSID_SaveImage);
+            btnSelectPlaces.Text = LangMan.LS(LSID.LSID_Show);
+            chkLinesVisible.Text = LangMan.LS(LSID.LSID_LinesVisible);
         }
 
         private TreeNode FindTreeNode(string place)
         {
-            int num = this.fBaseRoot.Nodes.Count;
+            int num = fBaseRoot.Nodes.Count;
             for (int i = 0; i < num; i++) {
-                TreeNode node = this.fBaseRoot.Nodes[i];
+                TreeNode node = fBaseRoot.Nodes[i];
 
                 if (node.Text == place) {
                     return node;
@@ -324,58 +321,63 @@ namespace GKUI
 
         private void AddPlace(GEDCOMPlace place, GEDCOMCustomEvent placeEvent)
         {
-            GEDCOMLocationRecord locRec = place.Location.Value as GEDCOMLocationRecord;
+            try
+            {
+                GEDCOMLocationRecord locRec = place.Location.Value as GEDCOMLocationRecord;
 
-            string placeName = (locRec != null) ? locRec.LocationName : place.StringValue;
+                string placeName = (locRec != null) ? locRec.LocationName : place.StringValue;
 
-            TreeNode node = this.FindTreeNode(placeName);
-            MapPlace mapPlace;
+                TreeNode node = FindTreeNode(placeName);
+                MapPlace mapPlace;
 
-            if (node == null) {
-                mapPlace = new MapPlace();
-                mapPlace.Name = placeName;
-                this.fPlaces.Add(mapPlace);
+                if (node == null) {
+                    mapPlace = new MapPlace();
+                    mapPlace.Name = placeName;
+                    fPlaces.Add(mapPlace);
 
-                node = new GKTreeNode(placeName, mapPlace);
-                this.fBaseRoot.Nodes.Add(node);
+                    node = new GKTreeNode(placeName, mapPlace);
+                    fBaseRoot.Nodes.Add(node);
 
-                if (locRec == null) {
-                    GKMapBrowser.RequestGeoCoords(placeName, mapPlace.Points);
+                    if (locRec == null) {
+                        MainWin.Instance.RequestGeoCoords(placeName, mapPlace.Points);
 
-                    int num = mapPlace.Points.Count;
-                    for (int i = 0; i < num; i++) {
-                        GMapPoint pt = mapPlace.Points[i];
+                        int num = mapPlace.Points.Count;
+                        for (int i = 0; i < num; i++) {
+                            GeoPoint pt = mapPlace.Points[i];
+                            string ptTitle = pt.Hint + string.Format(" [{0:0.000000}, {1:0.000000}]", pt.Latitude, pt.Longitude);
+                            node.Nodes.Add(new GKTreeNode(ptTitle, pt));
+                        }
+                    } else {
+                        GeoPoint pt = new GeoPoint(locRec.Map.Lati, locRec.Map.Long, placeName);
+                        mapPlace.Points.Add(pt);
+
                         string ptTitle = pt.Hint + string.Format(" [{0:0.000000}, {1:0.000000}]", pt.Latitude, pt.Longitude);
                         node.Nodes.Add(new GKTreeNode(ptTitle, pt));
                     }
                 } else {
-                    GMapPoint pt = new GMapPoint(locRec.Map.Lati, locRec.Map.Long, placeName);
-                    mapPlace.Points.Add(pt);
-
-                    string ptTitle = pt.Hint + string.Format(" [{0:0.000000}, {1:0.000000}]", pt.Latitude, pt.Longitude);
-                    node.Nodes.Add(new GKTreeNode(ptTitle, pt));
+                    mapPlace = (((GKTreeNode) node).Tag as MapPlace);
                 }
-            } else {
-                mapPlace = (((GKTreeNode) node).Tag as MapPlace);
-            }
 
-            mapPlace.PlaceRefs.Add(new PlaceRef(placeEvent));
+                mapPlace.PlaceRefs.Add(new PlaceRef(placeEvent));
+            } catch (Exception ex) {
+                Logger.LogWrite("MapsViewerWin.AddPlace(): " + ex.Message);
+            }
         }
 
-        private void CopyPoint(GMapPoint gmPt, PlaceRef placeRef)
+        private void CopyPoint(GeoPoint gmPt, PlaceRef placeRef)
         {
-            GMapPoint pt;
-            int num = this.fMapPoints.Count;
+            GeoPoint pt;
+            int num = fMapPoints.Count;
             for (int i = 0; i < num; i++) {
-                pt = this.fMapPoints[i];
+                pt = fMapPoints[i];
                 if (pt.Hint == gmPt.Hint) {
                     return;
                 }
             }
 
-            pt = new GMapPoint(gmPt.Latitude, gmPt.Longitude, gmPt.Hint);
+            pt = new GeoPoint(gmPt.Latitude, gmPt.Longitude, gmPt.Hint);
             pt.Date = placeRef.Date;
-            this.fMapPoints.Add(pt);
+            fMapPoints.Add(pt);
         }
     }
 }

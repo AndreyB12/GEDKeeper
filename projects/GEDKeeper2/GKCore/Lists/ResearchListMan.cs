@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,13 +29,13 @@ namespace GKCore.Lists
     /// </summary>
     public enum ResearchColumnType
     {
-        rctName,
-        rctPriority,
-        rctStatus,
-        rctStartDate,
-        rctStopDate,
-        rctPercent,
-        rctChangeDate
+        ctName,
+        ctPriority,
+        ctStatus,
+        ctStartDate,
+        ctStopDate,
+        ctPercent,
+        ctChangeDate
     }
 
     /// <summary>
@@ -46,18 +45,13 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_Title, DataType.dtString, 300, true);
-            this.AddStatic(LSID.LSID_Priority, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_Status, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_StartDate, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_StopDate, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_Percent, DataType.dtInteger, 90, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public ResearchListColumns() : base()
-        {
-            InitData(typeof(ResearchColumnType));
+            AddColumn(LSID.LSID_Title, DataType.dtString, 300, true);
+            AddColumn(LSID.LSID_Priority, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_Status, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_StartDate, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_StopDate, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_Percent, DataType.dtInteger, 90, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -68,44 +62,58 @@ namespace GKCore.Lists
     {
         private GEDCOMResearchRecord fRec;
 
+        public ResearchListMan(GEDCOMTree tree) : base(tree, new ResearchListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(this.fRec.ResearchName, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fRec.ResearchName, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMResearchRecord);
+            fRec = (aRec as GEDCOMResearchRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    return this.fRec.ResearchName;
-                case 1:
-                    return LangMan.LS(GKData.PriorityNames[(int)this.fRec.Priority]);
-                case 2:
-                    return LangMan.LS(GKData.StatusNames[(int)this.fRec.Status]);
-                case 3:
-                    return GetDateValue(this.fRec.StartDate, isVisible);
-                case 4:
-                    return GetDateValue(this.fRec.StopDate, isVisible);
-                case 5:
-                    return this.fRec.Percent;
-                case 6:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((ResearchColumnType)colType)
+            {
+                case ResearchColumnType.ctName:
+                    result = fRec.ResearchName;
+                    break;
 
-        public ResearchListMan(GEDCOMTree tree) : base(tree, new ResearchListColumns())
-        {
+                case ResearchColumnType.ctPriority:
+                    result = LangMan.LS(GKData.PriorityNames[(int)fRec.Priority]);
+                    break;
+
+                case ResearchColumnType.ctStatus:
+                    result = LangMan.LS(GKData.StatusNames[(int)fRec.Status]);
+                    break;
+
+                case ResearchColumnType.ctStartDate:
+                    result = GetDateValue(fRec.StartDate, isVisible);
+                    break;
+
+                case ResearchColumnType.ctStopDate:
+                    result = GetDateValue(fRec.StopDate, isVisible);
+                    break;
+
+                case ResearchColumnType.ctPercent:
+                    result = fRec.Percent;
+                    break;
+
+                case ResearchColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

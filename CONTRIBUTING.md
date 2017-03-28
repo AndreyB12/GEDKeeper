@@ -1,72 +1,31 @@
-# C# Coding Standards and Naming Conventions
+# How to contribute
 
-## Namespace
+No code is perfect and we always welcome third-party patches. This document describes guidelines that we need contributors to follow so that we can accept their pull requests.
 
-Namespaces are named using Pascal Case (also called `UpperCamelCase`) with no underscores. 
-This means the first letter of every word in the name is capitalized. For example: `MyNewNamespace`. 
-However, are allowed capitalized acronyms (`MyXMLNamespace`).
+## Getting started
 
-## Assemblies
+- Make sure you have an account on this site,
+- Submit a ticket for your issue, assuming one does not already exists.
+    - Write in English,
+    - Use the imperative mood in the subject/title field,
+    - Clearly describe the issue including steps to reproduce when it is a bug,
+    - Make sure you fill in the earliest version that you know has the issue.
+- Fork the repository on this site and `git-clone(1)` it locally.
 
-If an assembly contains only one namespace, they should use the same name. 
-Otherwise, Assemblies should follow the normal Pascal Case format.
+## Making changes
 
-## Classes and Structures
+- Create a topic branch from where you want to base your work,
+- Make your changes taking [style guide](CODINGSTYLE.md) into account,
+- Check for whitespace errors issuing `git diff --check`, `git diff --cached --check` or `git diff HEAD --check`,
+- Make commits writing good [commit messages](http://chris.beams.io/posts/git-commit/),
 
-Pascal Case, no underscores or leading C, cls, or I. Classes should not have the same name as the namespace 
-in which they reside. Allowed capitalized acronyms. Try to avoid abbreviations, and try to always use nouns.
+## Submitting changes
 
-## Exception Classes
+- Push your changes to a topic branch in your fork of the repository,
+- Submit a pull request to the project's repository,
+- Update your ticket to mark you have submitted code and are ready for it to be reviewed. Include a link to the pull request in the ticket.
 
-Follow class naming conventions, but add Exception to the end of the name.
+# Additional resources
 
-## Interfaces
-
-Follow class naming conventions, but start the name with I and capitalize the letter following the I. 
-Example: `IFoo` The I prefix helps to differentiate between Interfaces and classes and also to avoid name collisions.
-
-## Methods
-
-Pascal Case, no underscores except in the event handlers. Try to avoid abbreviations. 
-Many programmers have a nasty habit of overly abbreviating everything. This should be discouraged.
-
-## Properties and Public Fields
-
-Pascal Case, no underscores. Try to avoid abbreviations.
-
-## Method arguments and local variables
-
-Camel Case (or `lowerCamelCase`). Try to avoid abbreviations. 
-Camel Case is the same as Pascal case, but the first letter of the first word is lowercased.
-
-## Class-level Private and Protected fields
-
-Pascal Case with a leading `f`-char. Always indicate protected or private in the declaration. 
-The leading character helps to prevent name collisions in constructors (a parameter and a private field 
-having the same name).
-
-## Constants and readonly fields
-
-ALL_CAPS.
-
-## Controls on Forms
-
-Pascal Case with a prefix that identifies it as being part of the UI instead of a purely coded control 
-(example a temporary variable). Many developers use ui as the prefix followed by a descriptive name such as 
-txtUserName or lblUserNickName ("txt" stands for TextBox control and "lbl" for Label control)
-
-Some samples:
-```
-Control 	Prefix 	Example
-Label 	lbl 	lblSurname
-TextBox 	txt 	txtSurname
-DataGrid 	grid 	gridResults
-Button 	btn 	btnSave
-ListBox 	lst 	lstCompany
-Checkbox 	chk 	chkMailList
-CheckBoxList 	lst 	lstAddress
-RadioButton 	rad 	radSex
-Image 	img 	imgLogo
-Panel 	pnl 	pnlSevtion
-Table 	tbl 	tblResults
-```
+- [GEDKeeper coding style guide](CODINGSTYLE.md)
+- [GEDKeeper chat on gitter](https://gitter.im/Serg-Norseman/GEDKeeper)

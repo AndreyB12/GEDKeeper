@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -27,11 +27,11 @@ using GKCommon;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKNamesBookPlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 NamesBook plugin")]
+[assembly: AssemblyDescription("GEDKeeper NamesBook plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -44,7 +44,8 @@ namespace GKNamesBookPlugin
 {
     public enum NLS
     {
-        /* 032 */ LSID_MINamesBook
+        LSID_MINamesBook,
+        LSID_Calendar
     }
     
     public sealed class Plugin : BaseObject, IPlugin, IWidget
@@ -53,28 +54,28 @@ namespace GKNamesBookPlugin
         private IHost fHost;
         private ILangMan fLangMan;
 
-        public string DisplayName { get { return this.fDisplayName; } }
+        public string DisplayName { get { return fDisplayName; } }
         public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
 
-        private NamesBookWidget frm;
+        private NamesBookWidget fForm;
         
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (frm != null) frm.Dispose();
+                if (fForm != null) fForm.Dispose();
             }
             base.Dispose(disposing);
         }
 
         public void Execute()
         {
-            if (!this.fHost.IsWidgetActive(this)) {
-                frm = new NamesBookWidget(this);
-                frm.Show();
+            if (!fHost.IsWidgetActive(this)) {
+                fForm = new NamesBookWidget(this);
+                fForm.Show();
             } else {
-                frm.Close();
+                fForm.Close();
             }
         }
 
@@ -86,8 +87,10 @@ namespace GKNamesBookPlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
-                this.fDisplayName = this.fLangMan.LS(NLS.LSID_MINamesBook);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(NLS.LSID_MINamesBook);
+
+                if (fForm != null) fForm.SetLang();
             }
             catch (Exception ex)
             {
@@ -100,8 +103,7 @@ namespace GKNamesBookPlugin
             bool result = true;
             try
             {
-                this.fHost = host;
-                // Implement any startup code here
+                fHost = host;
             }
             catch (Exception ex)
             {
@@ -116,7 +118,6 @@ namespace GKNamesBookPlugin
             bool result = true;
             try
             {
-                // Implement any shutdown code here
             }
             catch (Exception ex)
             {
@@ -129,8 +130,9 @@ namespace GKNamesBookPlugin
         #region IWidget support
 
         void IWidget.WidgetInit(IHost host) {}
-        void IWidget.BaseChanged(IBaseWindow aBase) {}
-        void IWidget.BaseClosed(IBaseWindow aBase) {}
+        void IWidget.BaseChanged(IBaseWindow baseWin) {}
+        void IWidget.BaseClosed(IBaseWindow baseWin) {}
+        void IWidget.BaseRenamed(IBaseWindow baseWin, string oldName, string newName) {}
         void IWidget.WidgetEnable() {}
 
         #endregion

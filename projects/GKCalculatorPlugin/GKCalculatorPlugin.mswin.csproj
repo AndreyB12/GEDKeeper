@@ -96,7 +96,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="GKCalculatorPlugin.eng">
+    <None Include="GKCalculatorPlugin.enu">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="GKCalculatorPlugin.pol">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="GKCalculatorPlugin.rus">
@@ -105,8 +108,6 @@
     <None Include="GKCalculatorPlugin.ukr">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-  <ItemGroup>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

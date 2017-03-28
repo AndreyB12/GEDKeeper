@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using GKCommon;
 using GKCommon.GEDCOM;
 
 namespace GKCore.Stats
@@ -35,24 +36,24 @@ namespace GKCore.Stats
         private int MaleCount;
         private int FemaleCount;
 
-        public double CommonVal { get { return GKUtils.SafeDiv(CommonSum, CommonCount); } }
-        public double MaleVal { get { return GKUtils.SafeDiv(MaleSum, MaleCount); } }
-        public double FemaleVal { get { return GKUtils.SafeDiv(FemaleSum, FemaleCount); } }
+        public double CommonVal { get { return SysUtils.SafeDiv(CommonSum, CommonCount); } }
+        public double MaleVal { get { return SysUtils.SafeDiv(MaleSum, MaleCount); } }
+        public double FemaleVal { get { return SysUtils.SafeDiv(FemaleSum, FemaleCount); } }
 
         public CompositeItem()
         {
-            this.CommonSum = 0;
-            this.MaleSum = 0;
-            this.FemaleSum = 0;
+            CommonSum = 0;
+            MaleSum = 0;
+            FemaleSum = 0;
 
-            this.CommonCount = 0;
-            this.MaleCount = 0;
-            this.FemaleCount = 0;
+            CommonCount = 0;
+            MaleCount = 0;
+            FemaleCount = 0;
         }
 
         public void TakeVal(float val, GEDCOMSex sex, bool ignoreZero)
         {
-            if (val == 0 && ignoreZero) return;
+            if (val == 0.0f && ignoreZero) return;
 
             CommonSum += val;
             CommonCount++;

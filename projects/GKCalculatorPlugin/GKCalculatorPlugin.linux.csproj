@@ -107,7 +107,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="GKCalculatorPlugin.eng">
+    <None Include="GKCalculatorPlugin.enu">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="GKCalculatorPlugin.pol">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="GKCalculatorPlugin.rus">

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,8 +25,8 @@ namespace GKCommon.GEDCOM
     {
         public StringList PhysicalDescription
         {
-            get { return base.GetTagStrings(this); }
-            set { base.SetTagStrings(this, value); }
+            get { return GetTagStrings(this); }
+            set { SetTagStrings(this, value); }
         }
 
         public override GEDCOMTag AddTag(string tagName, string tagValue, TagConstructor tagConstructor)
@@ -39,7 +39,7 @@ namespace GKCommon.GEDCOM
             }
             else
             {
-                result = this.Detail.AddTag(tagName, tagValue, tagConstructor);
+                result = base.AddTag(tagName, tagValue, tagConstructor);
             }
 
             return result;

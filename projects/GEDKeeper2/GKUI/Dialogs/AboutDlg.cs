@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,8 +20,10 @@
 
 using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows.Forms;
 
+using GKCommon;
 using GKCore;
 
 namespace GKUI.Dialogs
@@ -29,28 +31,30 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class AboutDlg : Form
+    public sealed partial class AboutDlg : Form
     {
         public AboutDlg()
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.btnClose.Image = global::GKResources.iBtnAccept;
+            btnClose.Image = GKResources.iBtnAccept;
 
-            this.Text = LangMan.LS(LSID.LSID_MIAbout);
-            this.btnClose.Text = LangMan.LS(LSID.LSID_DlgClose);
+            Text = LangMan.LS(LSID.LSID_MIAbout);
+            btnClose.Text = LangMan.LS(LSID.LSID_DlgClose);
         }
 
         private void LabelMail_Click(object sender, EventArgs e)
         {
             Label lbl = sender as Label;
+            if (lbl == null) return;
+
             Process.Start(lbl.Text);
         }
 
         public static void ShowAbout()
         {
             string copyright, version;
-            GKUtils.GetAssemblyVersion(out copyright, out version);
+            SysUtils.GetAssemblyVersion(Assembly.GetExecutingAssembly(), out copyright, out version);
 
             using (AboutDlg dlg = new AboutDlg())
             {

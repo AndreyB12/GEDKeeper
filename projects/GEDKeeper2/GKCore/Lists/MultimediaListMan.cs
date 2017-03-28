@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,10 +29,10 @@ namespace GKCore.Lists
     /// </summary>
     public enum MultimediaColumnType
     {
-        mctTitle,
-        mctMediaType,
-        mctFileRef,
-        mctChangeDate
+        ctTitle,
+        ctMediaType,
+        ctFileRef,
+        ctChangeDate
     }
 
     /// <summary>
@@ -43,15 +42,10 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_Title, DataType.dtString, 150, true);
-            this.AddStatic(LSID.LSID_Type, DataType.dtString, 85, true);
-            this.AddStatic(LSID.LSID_File, DataType.dtString, 300, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public MultimediaListColumns() : base()
-        {
-            InitData(typeof(MultimediaColumnType));
+            AddColumn(LSID.LSID_Title, DataType.dtString, 150, true);
+            AddColumn(LSID.LSID_Type, DataType.dtString, 85, true);
+            AddColumn(LSID.LSID_File, DataType.dtString, 300, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -62,42 +56,49 @@ namespace GKCore.Lists
     {
         private GEDCOMMultimediaRecord fRec;
 
+        public MultimediaListMan(GEDCOMTree tree) : base(tree, new MultimediaListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            GEDCOMFileReferenceWithTitle fileRef = this.fRec.FileReferences[0];
+            GEDCOMFileReferenceWithTitle fileRef = fRec.FileReferences[0];
 
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(fileRef.Title, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fileRef.Title, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMMultimediaRecord);
+            fRec = (aRec as GEDCOMMultimediaRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            GEDCOMFileReferenceWithTitle fileRef = this.fRec.FileReferences[0];
+            GEDCOMFileReferenceWithTitle fileRef = fRec.FileReferences[0];
 
-            switch (colType) {
-                case 0:
-                    return fileRef.Title;
-                case 1:
-                    return LangMan.LS(GKData.MediaTypes[(int)fileRef.MediaType]);
-                case 2:
-                    return fileRef.StringValue;
-                case 3:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
+            object result = null;
+            switch ((MultimediaColumnType)colType) {
+                case MultimediaColumnType.ctTitle:
+                    result = fileRef.Title;
+                    break;
+
+                case MultimediaColumnType.ctMediaType:
+                    result = LangMan.LS(GKData.MediaTypes[(int)fileRef.MediaType]);
+                    break;
+
+                case MultimediaColumnType.ctFileRef:
+                    result = fileRef.StringValue;
+                    break;
+
+                case MultimediaColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
             }
-        }
-
-        public MultimediaListMan(GEDCOMTree tree) : base(tree, new MultimediaListColumns())
-        {
+            return result;
         }
     }
 }

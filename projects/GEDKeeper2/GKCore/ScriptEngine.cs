@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -24,20 +24,20 @@ using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 
-using Externals.CSV;
+using Externals;
 using GKCommon;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
 
-#if !__MonoCS__
-using LuaInterface;
-#else
-using NLua;
-#endif
-
 namespace GKCore
 {
+    #if !__MonoCS__
+    using LuaInterface;
+    #else
+    using NLua;
+    #endif
+
     [Serializable]
     public class ScriptException : Exception
     {
@@ -67,20 +67,40 @@ namespace GKCore
             base.Dispose(disposing);
         }
 
-        private void lua_print(object s)
+        public void lua_run(string script, IBaseWindow baseWin, TextBox debugOutput)
         {
-            fDebugOutput.Text += (s.ToString() + "\r\n");
+            fDebugOutput = debugOutput;
+            fBase = baseWin;
+
+            using (Lua lvm = new Lua())
+            {
+                try {
+                    lua_init(lvm);
+                    lvm.DoString(script);
+                } catch (Exception ex) {
+                    lua_print("> "+LangMan.LS(LSID.LSID_Error)+": " + ex.Message);
+                }
+            }
+        }
+
+        #region Private service functions
+
+        private void lua_print(object text)
+        {
+            if (fDebugOutput == null) return;
+
+            fDebugOutput.Text += (text + @"\r\n");
         }
 
         private void lua_register(Lua lvm, string funcName)
         {
-            MethodInfo mInfo = this.GetType().GetMethod(funcName);
+            MethodInfo mInfo = GetType().GetMethod(funcName);
             if (mInfo != null) {
                 lvm.RegisterFunction(funcName, this, mInfo);
             }
             else
             {
-                this.fBase.Host.LogWrite("ScriptEngine.lua_register(" + funcName + "): fail");
+                fBase.Host.LogWrite("ScriptEngine.lua_register(" + funcName + "): fail");
             }
         }
 
@@ -209,47 +229,37 @@ namespace GKCore
             lua_register(lvm, "ado_dump");
         }
 
-        public void lua_run(string script, IBaseWindow aBase, TextBox aDebugOutput)
-        {
-            this.fDebugOutput = aDebugOutput;
-            this.fBase = aBase;
+        #endregion
 
-            using (Lua lvm = new Lua())
-            {
-                try {
-                    lua_init(lvm);
-                    lvm.DoString(script);
-                } catch (Exception ex) {
-                    lua_print("> "+LangMan.LS(LSID.LSID_Error)+": " + ex.Message);
-                }
-            }
-        }
-
-        /////
+        #region Misc functions
 
         public void gk_print(object text)
         {
             lua_print(text);
         }
 
+        public int gk_strpos(string substr, string str)
+        {
+            return str.IndexOf(substr);
+        }
+
+        #endregion
+
+        #region UI functions
+
         public void gk_progress_init(int length, string title)
         {
-            this.fBase.ProgressInit(title, length);
+            fBase.ProgressInit(title, length);
         }
 
         public void gk_progress_done()
         {
-            this.fBase.ProgressDone();
+            fBase.ProgressDone();
         }
 
         public void gk_progress_step()
         {
-            this.fBase.ProgressStep();
-        }
-
-        public int gk_strpos(string substr, string str)
-        {
-            return str.IndexOf(substr);
+            fBase.ProgressStep();
         }
 
         public void gk_update_view()
@@ -266,9 +276,13 @@ namespace GKCore
             return fn;
         }
 
+        #endregion
+
+        #region GEDCOM functions
+
         public int gt_get_records_count()
         {
-            return (fBase.Tree.RecordsCount);
+            return fBase.Tree.RecordsCount;
         }
 
         public object gt_get_record(int idx)
@@ -322,75 +336,75 @@ namespace GKCore
 
         public string gt_get_person_name(object recPtr)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            return ((rec == null) ? "" : rec.GetNameString(true, false));
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            return ((iRec == null) ? "" : GKUtils.GetNameString(iRec, true, false));
         }
 
         public int gt_get_person_associations_count(object recPtr)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            return (rec == null) ? 0 : rec.Associations.Count;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            return (iRec == null) ? 0 : iRec.Associations.Count;
         }
 
         public object gt_get_person_association(object recPtr, int idx)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            if (rec == null) return null;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            if (iRec == null) return null;
 
-            GEDCOMAssociation asso = rec.Associations[idx];
+            GEDCOMAssociation asso = iRec.Associations[idx];
             return asso;
         }
 
         public object gt_add_person_association(object recPtr, string rel, object assoPtr)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            if (rec == null) return null;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            if (iRec == null) return null;
 
             GEDCOMIndividualRecord assoRec = assoPtr as GEDCOMIndividualRecord;
             if (assoRec == null) return null;
 
-            GEDCOMAssociation asso = rec.AddAssociation(rel, assoRec);
+            GEDCOMAssociation asso = iRec.AddAssociation(rel, assoRec);
             return asso;
         }
 
         public void gt_delete_person_association(object recPtr, int idx)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            if (rec == null) return;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            if (iRec == null) return;
 
-            rec.Associations.DeleteAt(idx);
+            iRec.Associations.DeleteAt(idx);
         }
 
         public int gt_get_person_events_count(object recPtr)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            return (rec == null) ? 0 : rec.Events.Count;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            return (iRec == null) ? 0 : iRec.Events.Count;
         }
 
         public object gt_get_person_event(object recPtr, int idx)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            if (rec == null) return null;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            if (iRec == null) return null;
 
-            GEDCOMCustomEvent evt = rec.Events[idx];
+            GEDCOMCustomEvent evt = iRec.Events[idx];
             return evt;
         }
 
         public object gt_get_person_event_ex(object recPtr, string sign)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            if (rec == null) return null;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            if (iRec == null) return null;
 
-            GEDCOMCustomEvent evt = rec.FindEvent(sign);
+            GEDCOMCustomEvent evt = iRec.FindEvent(sign);
             return evt;
         }
 
         public void gt_delete_person_event(object recPtr, int idx)
         {
-            GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
-            if (rec == null) return;
+            GEDCOMIndividualRecord iRec = recPtr as GEDCOMIndividualRecord;
+            if (iRec == null) return;
 
-            rec.Events.DeleteAt(idx);
+            iRec.Events.DeleteAt(idx);
         }
 
         public string gt_get_event_date(object evPtr)
@@ -403,16 +417,10 @@ namespace GKCore
         public int gt_get_event_year(object evPtr)
         {
             GEDCOMCustomEvent evt = evPtr as GEDCOMCustomEvent;
-            if (evt == null) {
-                return 0;
-            }
+            if (evt == null) return 0;
 
-            GEDCOMDate date = evt.Detail.Date.Value as GEDCOMDate;
-            if (date == null) {
-                return 0;
-            } else {
-                return date.Year;
-            }
+            GEDCOMDate date = evt.Date.Value as GEDCOMDate;
+            return (date == null) ? 0 : date.Year;
         }
 
         public void gt_set_event_date(object evPtr, string date)
@@ -422,7 +430,7 @@ namespace GKCore
                 GEDCOMCustomEvent evt = evPtr as GEDCOMCustomEvent;
                 if (evt != null && date != "")
                 {
-                    evt.Detail.Date.ParseString(date);
+                    evt.Date.ParseString(date);
                 }
             }
             catch
@@ -440,7 +448,7 @@ namespace GKCore
         public string gt_get_event_place(object evPtr)
         {
             GEDCOMCustomEvent evt = evPtr as GEDCOMCustomEvent;
-            return (evt == null) ? string.Empty : evt.Detail.Place.StringValue;
+            return (evt == null) ? string.Empty : evt.Place.StringValue;
         }
 
         public void gt_set_event_value(object evPtr, string value)
@@ -456,7 +464,7 @@ namespace GKCore
             GEDCOMCustomEvent evt = evPtr as GEDCOMCustomEvent;
             if (evt == null) return;
 
-            evt.Detail.Place.StringValue = place;
+            evt.Place.StringValue = place;
         }
 
         public string gt_get_event_name(object evPtr)
@@ -476,15 +484,15 @@ namespace GKCore
             GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
             if (rec == null) return;
 
-            GEDCOMSex sex = (strSex.Length == 1) ? GKUtils.GetSexBySign(strSex[1]) : GEDCOMSex.svNone;
+            GEDCOMSex sex = (strSex.Length == 1) ? GKUtils.GetSexBySign(strSex[0]) : GEDCOMSex.svNone;
             rec.Sex = sex;
         }
 
-        public object gt_create_person(string name, string patronymic, string family, string strSex)
+        public object gt_create_person(string name, string patronymic, string surname, string strSex)
         {
             GEDCOMSex sex = (strSex.Length == 1) ? GKUtils.GetSexBySign(strSex[0]) : GEDCOMSex.svNone;
 
-            GEDCOMIndividualRecord iRec = fBase.Context.CreatePersonEx(name, patronymic, family, sex, false);
+            GEDCOMIndividualRecord iRec = fBase.Context.CreatePersonEx(name, patronymic, surname, sex, false);
             return iRec;
         }
 
@@ -569,21 +577,21 @@ namespace GKCore
 
         public string gt_define_sex(string name, string patr)
         {
-            GEDCOMSex sx = this.fBase.DefineSex(name, patr);
+            GEDCOMSex sx = fBase.DefineSex(name, patr);
 
             return (GKData.SexData[(int)sx].Sign);
         }
 
         public object gt_find_source(string name)
         {
-            GEDCOMSourceRecord srcRec = this.fBase.Context.FindSource(name);
+            GEDCOMSourceRecord srcRec = fBase.Context.FindSource(name);
             return srcRec;
         }
 
         public object gt_create_event(object recPtr, string sign)
         {
             GEDCOMRecordWithEvents rec = recPtr as GEDCOMRecordWithEvents;
-            GEDCOMCustomEvent evt = this.fBase.Context.CreateEventEx(rec, sign, "", "");
+            GEDCOMCustomEvent evt = fBase.Context.CreateEventEx(rec, sign, "", "");
 
             return evt;
         }
@@ -601,7 +609,7 @@ namespace GKCore
             GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
             if (rec == null) return null;
 
-            GEDCOMFamilyRecord fam = (rec.ChildToFamilyLinks.Count < 1) ? null : rec.ChildToFamilyLinks[0].Family;
+            GEDCOMFamilyRecord fam = rec.GetParentsFamily();
             return fam;
         }
 
@@ -637,18 +645,20 @@ namespace GKCore
         public int gt_get_family_childs_count(object recPtr)
         {
             GEDCOMFamilyRecord fam = recPtr as GEDCOMFamilyRecord;
-            return (fam == null) ? -1 : fam.Childrens.Count;
+            return (fam == null) ? -1 : fam.Children.Count;
         }
 
         public object gt_get_family_child(object recPtr, int childIndex)
         {
             GEDCOMFamilyRecord fam = recPtr as GEDCOMFamilyRecord;
-            return (fam == null) ? null : fam.Childrens[childIndex].Value;
+            return (fam == null) ? null : fam.Children[childIndex].Value;
         }
 
         public int gt_get_location_usages(object recPtr)
         {
             GEDCOMLocationRecord loc = recPtr as GEDCOMLocationRecord;
+            if (loc == null) return -1;
+
             int usages;
 
             StringList linkList = new StringList();
@@ -671,8 +681,6 @@ namespace GKCore
             return (rec == null) ? -1 : rec.Notes.Count;
         }
 
-        //
-
         public int gt_get_person_groups_count(object recPtr)
         {
             GEDCOMIndividualRecord rec = recPtr as GEDCOMIndividualRecord;
@@ -694,28 +702,28 @@ namespace GKCore
             return (grp == null) ? "" : grp.GroupName;
         }
 
-        //
+        #endregion
+
+        #region CSV functions
 
         private DataTable fCSVData = null;
 
-        public bool csv_load(string fileName, bool firstLineIsSchema)
+        public bool csv_load(string fileName, bool hasHeader)
         {
-            bool res = false;
+            bool result = false;
+            if (!File.Exists(fileName)) return result;
 
-            if (File.Exists(fileName))
+            try
             {
-                try
-                {
-                    fCSVData = CSVReader.ReadCSVFile(fileName, firstLineIsSchema);
-                    res = true;
-                }
-                catch
-                {
-                    res = false;
-                }
+                fCSVData = CSVReader.ReadCSVFile(fileName, hasHeader);
+                result = true;
+            }
+            catch
+            {
+                result = false;
             }
 
-            return res;
+            return result;
         }
 
         public void csv_close()
@@ -745,6 +753,10 @@ namespace GKCore
             DataRow dr = fCSVData.Rows[row];
             return dr.ItemArray[col].ToString();
         }
+
+        #endregion
+
+        #region ADO functions
 
         public object ado_open(string constr)
         {
@@ -794,5 +806,7 @@ namespace GKCore
         public void ado_dump(object conptr)
         {
         }
+
+        #endregion
     }
 }

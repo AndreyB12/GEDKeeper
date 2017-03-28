@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Globalization;
 using System.Reflection;
 using System.Resources;
@@ -32,12 +31,12 @@ namespace GKCommon
         public GKResourceManager(string baseName, Assembly assembly)
             : base(baseName, assembly)
         {
-            this.fNeutralResourcesLanguage = GetNeutralResourcesLanguage(assembly);
+            fNeutralResourcesLanguage = GetNeutralResourcesLanguage(assembly);
         }
 
         public object GetObjectEx(string name)
         {
-            return base.GetObject(name, this.fNeutralResourcesLanguage);
+            return GetObject(name, fNeutralResourcesLanguage);
         }
     }
 }

@@ -8,7 +8,6 @@
  */
 
 using System;
-using System.IO;
 
 namespace GKCommon
 {
@@ -16,7 +15,10 @@ namespace GKCommon
     {
         Unknown,
         Word,
+        Ident,
         Number,
+        HexNumber,
+        BinNumber,
         QuotedString,
         WhiteSpace,
         Symbol,
@@ -33,198 +35,106 @@ namespace GKCommon
 
         public Token(TokenKind kind, string value, int line, int column)
         {
-            this.Kind = kind;
-            this.Value = value;
-            this.Line = line;
-            this.Column = column;
+            Kind = kind;
+            Value = value;
+            Line = line;
+            Column = column;
         }
     }
 
     /// <summary>
-    /// StringTokenizer tokenized string (or stream) into tokens.
+    /// StringTokenizer tokenized string into tokens.
     /// </summary>
     public class StringTokenizer
     {
         private const char EOF = (char)0;
 
-        private int line;
-        private int column;
-        private int pos;	// position within data
+        private readonly char[] fData;
 
-        private readonly string data;
+        private int fColumn;
+        private int fLine;
+        private int fPos; // position within data
 
-        private bool ignoreWhiteSpace;
-        private bool recognizeDecimals;
-        private char[] symbolChars;
+        private Token fCurrentToken;
+        private bool fIgnoreWhiteSpace;
+        private bool fRecognizeDecimals;
+        private bool fRecognizeHex;
+        private bool fRecognizeBin;
+        private bool fRecognizeIdents;
+        private int fSaveCol;
+        private int fSaveLine;
+        private int fSavePos;
+        private char[] fSymbolChars;
 
-        private int saveLine;
-        private int saveCol;
-        private int savePos;
+        #region Properties
 
-        public StringTokenizer(TextReader reader)
+        public Token CurrentToken
         {
-            if (reader == null)
-                throw new ArgumentNullException("reader");
-
-            data = reader.ReadToEnd();
-
-            Reset();
-        }
-
-        public StringTokenizer(string data)
-        {
-            if (data == null)
-                throw new ArgumentNullException("data");
-
-            this.data = data;
-
-            Reset();
+            get { return fCurrentToken; }
         }
 
         /// <summary>
-        /// gets or sets which characters are part of TokenKind.Symbol
-        /// </summary>
-        public char[] SymbolChars
-        {
-            get { return this.symbolChars; }
-            set { this.symbolChars = value; }
-        }
-
-        /// <summary>
-        /// if set to true, white space characters will be ignored,
+        /// If set to true, white space characters will be ignored,
         /// but EOL and whitespace inside of string will still be tokenized
         /// </summary>
         public bool IgnoreWhiteSpace
         {
-            get { return this.ignoreWhiteSpace; }
-            set { this.ignoreWhiteSpace = value; }
+            get { return fIgnoreWhiteSpace; }
+            set { fIgnoreWhiteSpace = value; }
         }
 
         public bool RecognizeDecimals
         {
-            get { return this.recognizeDecimals; }
-            set { this.recognizeDecimals = value; }
+            get { return fRecognizeDecimals; }
+            set { fRecognizeDecimals = value; }
+        }
+
+        public bool RecognizeHex
+        {
+            get { return fRecognizeHex; }
+            set { fRecognizeHex = value; }
+        }
+
+        public bool RecognizeBin
+        {
+            get { return fRecognizeBin; }
+            set { fRecognizeBin = value; }
+        }
+
+        public bool RecognizeIdents
+        {
+            get { return fRecognizeIdents; }
+            set { fRecognizeIdents = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets which characters are part of TokenKind.Symbol
+        /// </summary>
+        public char[] SymbolChars
+        {
+            get { return fSymbolChars; }
+            set { fSymbolChars = value; }
         }
 
         public int Position
         {
-            get { return this.pos; }
+            get { return fPos; }
         }
+
+        #endregion
+
+        #region Private methods
 
         private void Reset()
         {
-            this.ignoreWhiteSpace = false;
-            this.recognizeDecimals = true;
-            this.symbolChars = new char[]{'=', '+', '-', '/', ',', '.', '*', '~', '!', '@', '#', '$', '%', '^', '&', '(', ')', '{', '}', '[', ']', ':', ';', '<', '>', '?', '|', '\\'};
+            fCurrentToken = null;
+            fIgnoreWhiteSpace = false;
+            fRecognizeDecimals = true;
+            fSymbolChars = new char[] {'=', '+', '-', '/', ',', '.', '*', '~', '!', '@', '#', '$', '%', '^', '&', '(', ')', '{', '}', '[', ']', ':', ';', '<', '>', '?', '|', '\\'};
 
-            line = 1;
-            column = 1;
-            pos = 0;
-        }
-
-        protected char LA(int count)
-        {
-            return (pos + count >= data.Length) ? EOF : data[pos+count];
-        }
-
-        protected char Consume()
-        {
-            char ret = data[pos];
-            pos++;
-            column++;
-
-            return ret;
-        }
-
-        protected Token CreateToken(TokenKind kind, string value)
-        {
-            return new Token(kind, value, line, column);
-        }
-
-        protected Token CreateToken(TokenKind kind)
-        {
-            string tokenData = data.Substring(savePos, pos-savePos);
-            return new Token(kind, tokenData, saveLine, saveCol);
-        }
-
-        public Token Next()
-        {
-        ReadToken:
-
-            char ch = LA(0);
-            switch (ch)
-            {
-                case EOF:
-                    return CreateToken(TokenKind.EOF, string.Empty);
-
-                case ' ':
-                case '\t':
-                    {
-                        if (this.ignoreWhiteSpace)
-                        {
-                            Consume();
-                            goto ReadToken;
-                        }
-                        return ReadWhitespace();
-                    }
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                    return ReadNumber();
-
-                case '\r':
-                    {
-                        StartRead();
-                        Consume();
-                        if (LA(0) == '\n')
-                            Consume();	// on DOS/Windows we have \r\n for new line
-
-                        line++;
-                        column=1;
-
-                        return CreateToken(TokenKind.EOL);
-                    }
-                case '\n':
-                    {
-                        StartRead();
-                        Consume();
-                        line++;
-                        column=1;
-                        
-                        return CreateToken(TokenKind.EOL);
-                    }
-
-                case '"':
-                    {
-                        return ReadString();
-                    }
-
-                default:
-                    {
-                        if (Char.IsLetter(ch) || ch == '_')
-                            return ReadWord();
-                        else if (IsSymbol(ch))
-                        {
-                            StartRead();
-                            Consume();
-                            return CreateToken(TokenKind.Symbol);
-                        }
-                        else
-                        {
-                            StartRead();
-                            Consume();
-                            return CreateToken(TokenKind.Unknown);
-                        }
-                    }
-
-            }
+            fLine = 1;
+            fColumn = 1;
+            fPos = 0;
         }
 
         /// <summary>
@@ -232,9 +142,36 @@ namespace GKCommon
         /// </summary>
         private void StartRead()
         {
-            saveLine = line;
-            saveCol = column;
-            savePos = pos;
+            fSaveCol = fColumn;
+            fSaveLine = fLine;
+            fSavePos = fPos;
+        }
+
+        protected char LookAhead(int count)
+        {
+            return (fPos + count >= fData.Length) ? EOF : fData[fPos+count];
+        }
+
+        protected char Consume()
+        {
+            char ret = fData[fPos];
+            fPos++;
+            fColumn++;
+
+            return ret;
+        }
+
+        protected Token CreateToken(TokenKind kind, string value)
+        {
+            fCurrentToken = new Token(kind, value, fLine, fColumn);
+            return fCurrentToken;
+        }
+
+        protected Token CreateToken(TokenKind kind)
+        {
+            string tokenData = new string(fData, fSavePos, fPos - fSavePos);
+            fCurrentToken = new Token(kind, tokenData, fSaveLine, fSaveCol);
+            return fCurrentToken;
         }
 
         /// <summary>
@@ -249,7 +186,7 @@ namespace GKCommon
 
             while (true)
             {
-                char ch = LA(0);
+                char ch = LookAhead(0);
                 if (ch == '\t' || ch == ' ')
                     Consume();
                 else
@@ -267,25 +204,38 @@ namespace GKCommon
         {
             StartRead();
 
+            TokenKind kind = TokenKind.Number;
             bool hadDot = false;
+            bool hadHex = false;
+            bool hadBin = false;
 
             Consume(); // read first digit
-
             while (true)
             {
-                char ch = LA(0);
-                if (Char.IsDigit(ch))
+                char ch = LookAhead(0);
+
+                if (char.IsDigit(ch)) {
                     Consume();
-                else if (ch == '.' && recognizeDecimals && !hadDot)
-                {
+                } else if (((ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')) && fRecognizeHex && hadHex) {
+                    Consume();
+                } else if (ch == '.' && fRecognizeDecimals && !hadDot) {
                     hadDot = true;
                     Consume();
+                } else if ((ch == 'e' || ch == 'E' || ch == '+' || ch == '-') && fRecognizeDecimals && hadDot) {
+                    Consume();
+                } else if (ch == 'x' && fRecognizeHex && !hadHex) {
+                    hadHex = true;
+                    kind = TokenKind.HexNumber;
+                    Consume();
+                } else if (ch == 'b' && fRecognizeBin && !hadBin) {
+                    hadBin = true;
+                    kind = TokenKind.BinNumber;
+                    Consume();
                 }
-                else
-                    break;
+                else break;
             }
 
-            return CreateToken(TokenKind.Number);
+            return CreateToken(kind);
         }
 
         /// <summary>
@@ -295,18 +245,22 @@ namespace GKCommon
         {
             StartRead();
 
-            Consume(); // consume first character of the word
+            TokenKind kind = TokenKind.Word;
 
+            Consume(); // consume first character of the word
             while (true)
             {
-                char ch = LA(0);
-                if (Char.IsLetter(ch) || ch == '_')
+                char ch = LookAhead(0);
+                if (char.IsLetter(ch) || ch == '_') {
                     Consume();
-                else
+                } else if (char.IsDigit(ch) && fRecognizeIdents) {
+                    kind = TokenKind.Ident;
+                    Consume();
+                } else
                     break;
             }
 
-            return CreateToken(TokenKind.Word);
+            return CreateToken(kind);
         }
 
         /// <summary>
@@ -323,29 +277,29 @@ namespace GKCommon
 
             while (true)
             {
-                char ch = LA(0);
+                char ch = LookAhead(0);
                 if (ch == EOF) break;
                 
                 if (ch == '\r')	// handle CR in strings
                 {
                     Consume();
-                    if (LA(0) == '\n')	// for DOS & windows
+                    if (LookAhead(0) == '\n')	// for DOS & windows
                         Consume();
 
-                    line++;
-                    column = 1;
+                    fLine++;
+                    fColumn = 1;
                 }
                 else if (ch == '\n')	// new line in quoted string
                 {
                     Consume();
 
-                    line++;
-                    column = 1;
+                    fLine++;
+                    fColumn = 1;
                 }
                 else if (ch == '"')
                 {
                     Consume();
-                    if (LA(0) != '"') break; // done reading, and this quotes does not have escape character
+                    if (LookAhead(0) != '"') break; // done reading, and this quotes does not have escape character
                     
                     Consume(); // consume second ", because first was just an escape
                 }
@@ -361,11 +315,111 @@ namespace GKCommon
         /// </summary>
         protected bool IsSymbol(char c)
         {
-            for (int i = 0; i < symbolChars.Length; i++)
-                if (symbolChars[i] == c)
+            for (int i = 0; i < fSymbolChars.Length; i++)
+                if (fSymbolChars[i] == c)
                     return true;
 
             return false;
+        }
+
+        #endregion
+
+        public StringTokenizer(string data)
+        {
+            if (data == null)
+                throw new ArgumentNullException("data");
+
+            // according to the profiler, "Next()" is faster (+7.1%)
+            fData = new char[data.Length];
+            data.CopyTo(0, fData, 0, data.Length);
+
+            Reset();
+        }
+
+        public Token Next()
+        {
+            while (true) {
+                char ch = LookAhead(0);
+                switch (ch)
+                {
+                    case EOF:
+                        return CreateToken(TokenKind.EOF, string.Empty);
+
+                    case ' ':
+                    case '\t':
+                        {
+                            if (!fIgnoreWhiteSpace)
+                                return ReadWhitespace();
+
+                            Consume();
+                            break;
+                        }
+
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                        return ReadNumber();
+
+                    case '\r':
+                        {
+                            StartRead();
+                            Consume();
+                            if (LookAhead(0) == '\n')
+                                Consume();	// on DOS/Windows we have \r\n for new line
+
+                            fLine++;
+                            fColumn = 1;
+
+                            return CreateToken(TokenKind.EOL);
+                        }
+
+                    case '\n':
+                        {
+                            StartRead();
+                            Consume();
+                            fLine++;
+                            fColumn = 1;
+
+                            return CreateToken(TokenKind.EOL);
+                        }
+
+                    case '"':
+                        {
+                            return ReadString();
+                        }
+
+                    default:
+                        {
+                            if (char.IsLetter(ch) || ch == '_')
+                                return ReadWord();
+
+                            if (IsSymbol(ch))
+                            {
+                                StartRead();
+                                Consume();
+                                return CreateToken(TokenKind.Symbol);
+                            }
+                            else
+                            {
+                                StartRead();
+                                Consume();
+                                return CreateToken(TokenKind.Unknown);
+                            }
+                        }
+                }
+            }
+        }
+
+        public bool RequireToken(TokenKind tokenKind)
+        {
+            return (fCurrentToken != null && fCurrentToken.Kind == tokenKind);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,15 +18,17 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using System.Drawing;
 using GKCommon;
+using GKCore.Interfaces;
 
 namespace GKCore.Options
 {
     /// <summary>
     /// 
     /// </summary>
-    public sealed class TreeChartOptions : BaseObject
+    public sealed class TreeChartOptions : BaseObject, IOptions
     {
         public bool ChildlessExclude;
         public bool Decorative;
@@ -40,6 +42,7 @@ namespace GKCore.Options
         public bool OnlyYears;
         public bool Kinship;
         public bool PortraitsVisible;
+        public bool DefaultPortraits;
         public bool SignsVisible;
         public bool CertaintyIndexVisible;
         public bool TraceSelected;
@@ -57,96 +60,139 @@ namespace GKCore.Options
 
         public TreeChartOptions()
         {
-            this.ChildlessExclude = false;
-            this.Decorative = true;
-            this.FamilyVisible = true;
-            this.NameVisible = true;
-            this.PatronymicVisible = true;
-            this.NickVisible = false;
-            this.DiffLines = false;
-            this.BirthDateVisible = false;
-            this.DeathDateVisible = false;
-            this.OnlyYears = false;
-            this.Kinship = false;
-            this.PortraitsVisible = true;
-            this.SignsVisible = false;
-            this.CertaintyIndexVisible = false;
-            this.TraceSelected = true;
-            
-            this.MaleColor = Color.FromArgb(-3750145);
-            this.FemaleColor = Color.FromArgb(-14650);
-            this.UnkSexColor = Color.FromArgb(-14593);
-            this.UnHusbandColor = Color.FromArgb(-2631681);
-            this.UnWifeColor = Color.FromArgb(-10281);
-            
-            this.DefFontName = "Verdana";
-            this.DefFontSize = 8;
-            this.DefFontColor = Color.Black;
-            this.DefFontStyle = FontStyle.Regular;
+            FamilyVisible = true;
+            NameVisible = true;
+            PatronymicVisible = true;
+            NickVisible = true;
+            DiffLines = true;
+
+            BirthDateVisible = true;
+            DeathDateVisible = true;
+            OnlyYears = true;
+
+            Kinship = false;
+            PortraitsVisible = true;
+            DefaultPortraits = false;
+            SignsVisible = false;
+            CertaintyIndexVisible = false;
+            TraceSelected = true;
+            ChildlessExclude = false;
+            Decorative = true;
+
+            MaleColor = Color.FromArgb(-3750145);
+            FemaleColor = Color.FromArgb(-14650);
+            UnkSexColor = Color.FromArgb(-14593);
+            UnHusbandColor = Color.FromArgb(-2631681);
+            UnWifeColor = Color.FromArgb(-10281);
+
+            DefFontName = "Verdana";
+            DefFontSize = 8;
+            DefFontColor = Color.Black;
+            DefFontStyle = FontStyle.Regular;
+        }
+
+        public void Assign(IOptions source)
+        {
+            TreeChartOptions srcOptions = source as TreeChartOptions;
+            if (srcOptions == null) return;
+
+            FamilyVisible = srcOptions.FamilyVisible;
+            NameVisible = srcOptions.NameVisible;
+            PatronymicVisible = srcOptions.PatronymicVisible;
+            NickVisible = srcOptions.NickVisible;
+            DiffLines = srcOptions.DiffLines;
+            BirthDateVisible = srcOptions.BirthDateVisible;
+            DeathDateVisible = srcOptions.DeathDateVisible;
+            OnlyYears = srcOptions.OnlyYears;
+            Kinship = srcOptions.Kinship;
+            PortraitsVisible = srcOptions.PortraitsVisible;
+            DefaultPortraits = srcOptions.DefaultPortraits;
+            SignsVisible = srcOptions.SignsVisible;
+            CertaintyIndexVisible = srcOptions.CertaintyIndexVisible;
+            TraceSelected = srcOptions.TraceSelected;
+            ChildlessExclude = srcOptions.ChildlessExclude;
+            Decorative = srcOptions.Decorative;
+            MaleColor = srcOptions.MaleColor;
+            FemaleColor = srcOptions.FemaleColor;
+            UnkSexColor = srcOptions.UnkSexColor;
+            UnHusbandColor = srcOptions.UnHusbandColor;
+            UnWifeColor = srcOptions.UnWifeColor;
+            DefFontName = srcOptions.DefFontName;
+            DefFontSize = srcOptions.DefFontSize;
+            DefFontColor = srcOptions.DefFontColor;
+            DefFontStyle = srcOptions.DefFontStyle;
         }
 
         public void LoadFromFile(IniFile iniFile)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
-            this.ChildlessExclude = iniFile.ReadBool("Chart", "ChildlessExclude", false);
-            this.Decorative = iniFile.ReadBool("Chart", "Decorative", true);
-            this.FamilyVisible = iniFile.ReadBool("Chart", "FamilyVisible", true);
-            this.NameVisible = iniFile.ReadBool("Chart", "NameVisible", true);
-            this.PatronymicVisible = iniFile.ReadBool("Chart", "PatronymicVisible", true);
-            this.NickVisible = iniFile.ReadBool("Chart", "NickVisible", true);
-            this.DiffLines = iniFile.ReadBool("Chart", "DiffLines", false);
-            this.BirthDateVisible = iniFile.ReadBool("Chart", "BirthDateVisible", false);
-            this.DeathDateVisible = iniFile.ReadBool("Chart", "DeathDateVisible", false);
-            this.OnlyYears = iniFile.ReadBool("Chart", "OnlyYears", false);
-            this.Kinship = iniFile.ReadBool("Chart", "Kinship", false);
-            this.SignsVisible = iniFile.ReadBool("Chart", "SignsVisible", false);
-            this.PortraitsVisible = iniFile.ReadBool("Chart", "PortraitsVisible", true);
-            this.CertaintyIndexVisible = iniFile.ReadBool("Chart", "CertaintyIndexVisible", false);
-            this.TraceSelected = iniFile.ReadBool("Chart", "TraceSelected", true);
-            
-            this.MaleColor = Color.FromArgb(iniFile.ReadInteger("Chart", "MaleColor", -3750145));
-            this.FemaleColor = Color.FromArgb(iniFile.ReadInteger("Chart", "FemaleColor", -14650));
-            this.UnkSexColor = Color.FromArgb(iniFile.ReadInteger("Chart", "UnkSexColor", -14593));
-            this.UnHusbandColor = Color.FromArgb(iniFile.ReadInteger("Chart", "UnHusbandColor", -2631681));
-            this.UnWifeColor = Color.FromArgb(iniFile.ReadInteger("Chart", "UnWifeColor", -10281));
-            
-            this.DefFontName = iniFile.ReadString("Chart", "FontName", "Verdana");
-            this.DefFontSize = iniFile.ReadInteger("Chart", "FontSize", 8);
-            this.DefFontColor = Color.FromArgb(iniFile.ReadInteger("Chart", "FontColor", Color.Black.ToArgb()));
-            this.DefFontStyle = (FontStyle)((uint)iniFile.ReadInteger("Chart", "FontStyle", 0));
+            FamilyVisible = iniFile.ReadBool("Chart", "FamilyVisible", true);
+            NameVisible = iniFile.ReadBool("Chart", "NameVisible", true);
+            PatronymicVisible = iniFile.ReadBool("Chart", "PatronymicVisible", true);
+            NickVisible = iniFile.ReadBool("Chart", "NickVisible", true);
+            DiffLines = iniFile.ReadBool("Chart", "DiffLines", true);
+
+            BirthDateVisible = iniFile.ReadBool("Chart", "BirthDateVisible", true);
+            DeathDateVisible = iniFile.ReadBool("Chart", "DeathDateVisible", true);
+            OnlyYears = iniFile.ReadBool("Chart", "OnlyYears", true);
+
+            Kinship = iniFile.ReadBool("Chart", "Kinship", false);
+            SignsVisible = iniFile.ReadBool("Chart", "SignsVisible", false);
+            PortraitsVisible = iniFile.ReadBool("Chart", "PortraitsVisible", true);
+            DefaultPortraits = iniFile.ReadBool("Chart", "DefaultPortraits", false);
+            CertaintyIndexVisible = iniFile.ReadBool("Chart", "CertaintyIndexVisible", false);
+            TraceSelected = iniFile.ReadBool("Chart", "TraceSelected", true);
+            ChildlessExclude = iniFile.ReadBool("Chart", "ChildlessExclude", false);
+            Decorative = iniFile.ReadBool("Chart", "Decorative", true);
+
+            MaleColor = Color.FromArgb(iniFile.ReadInteger("Chart", "MaleColor", -3750145));
+            FemaleColor = Color.FromArgb(iniFile.ReadInteger("Chart", "FemaleColor", -14650));
+            UnkSexColor = Color.FromArgb(iniFile.ReadInteger("Chart", "UnkSexColor", -14593));
+            UnHusbandColor = Color.FromArgb(iniFile.ReadInteger("Chart", "UnHusbandColor", -2631681));
+            UnWifeColor = Color.FromArgb(iniFile.ReadInteger("Chart", "UnWifeColor", -10281));
+
+            DefFontName = iniFile.ReadString("Chart", "FontName", "Verdana");
+            DefFontSize = iniFile.ReadInteger("Chart", "FontSize", 8);
+            DefFontColor = Color.FromArgb(iniFile.ReadInteger("Chart", "FontColor", Color.Black.ToArgb()));
+            DefFontStyle = (FontStyle)((uint)iniFile.ReadInteger("Chart", "FontStyle", 0));
         }
 
         public void SaveToFile(IniFile iniFile)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
-            iniFile.WriteBool("Chart", "ChildlessExclude", this.ChildlessExclude);
-            iniFile.WriteBool("Chart", "Decorative", this.Decorative);
-            iniFile.WriteBool("Chart", "FamilyVisible", this.FamilyVisible);
-            iniFile.WriteBool("Chart", "NameVisible", this.NameVisible);
-            iniFile.WriteBool("Chart", "PatronymicVisible", this.PatronymicVisible);
-            iniFile.WriteBool("Chart", "NickVisible", this.NickVisible);
-            iniFile.WriteBool("Chart", "DiffLines", this.DiffLines);
-            iniFile.WriteBool("Chart", "BirthDateVisible", this.BirthDateVisible);
-            iniFile.WriteBool("Chart", "DeathDateVisible", this.DeathDateVisible);
-            iniFile.WriteBool("Chart", "OnlyYears", this.OnlyYears);
-            iniFile.WriteBool("Chart", "Kinship", this.Kinship);
-            iniFile.WriteBool("Chart", "SignsVisible", this.SignsVisible);
-            iniFile.WriteBool("Chart", "PortraitsVisible", this.PortraitsVisible);
-            iniFile.WriteBool("Chart", "CertaintyIndexVisible", this.CertaintyIndexVisible);
-            iniFile.WriteBool("Chart", "TraceSelected", this.TraceSelected);
-            
-            iniFile.WriteInteger("Chart", "MaleColor", this.MaleColor.ToArgb());
-            iniFile.WriteInteger("Chart", "FemaleColor", this.FemaleColor.ToArgb());
-            iniFile.WriteInteger("Chart", "UnkSexColor", this.UnkSexColor.ToArgb());
-            iniFile.WriteInteger("Chart", "UnHusbandColor", this.UnHusbandColor.ToArgb());
-            iniFile.WriteInteger("Chart", "UnWifeColor", this.UnWifeColor.ToArgb());
-            
-            iniFile.WriteString("Chart", "FontName", this.DefFontName);
-            iniFile.WriteInteger("Chart", "FontSize", this.DefFontSize);
-            iniFile.WriteInteger("Chart", "FontColor", this.DefFontColor.ToArgb());
-            iniFile.WriteInteger("Chart", "FontStyle", (byte)this.DefFontStyle);
+            iniFile.WriteBool("Chart", "FamilyVisible", FamilyVisible);
+            iniFile.WriteBool("Chart", "NameVisible", NameVisible);
+            iniFile.WriteBool("Chart", "PatronymicVisible", PatronymicVisible);
+            iniFile.WriteBool("Chart", "NickVisible", NickVisible);
+            iniFile.WriteBool("Chart", "DiffLines", DiffLines);
+
+            iniFile.WriteBool("Chart", "BirthDateVisible", BirthDateVisible);
+            iniFile.WriteBool("Chart", "DeathDateVisible", DeathDateVisible);
+            iniFile.WriteBool("Chart", "OnlyYears", OnlyYears);
+
+            iniFile.WriteBool("Chart", "Kinship", Kinship);
+            iniFile.WriteBool("Chart", "SignsVisible", SignsVisible);
+            iniFile.WriteBool("Chart", "PortraitsVisible", PortraitsVisible);
+            iniFile.WriteBool("Chart", "DefaultPortraits", DefaultPortraits);
+            iniFile.WriteBool("Chart", "CertaintyIndexVisible", CertaintyIndexVisible);
+            iniFile.WriteBool("Chart", "TraceSelected", TraceSelected);
+            iniFile.WriteBool("Chart", "ChildlessExclude", ChildlessExclude);
+            iniFile.WriteBool("Chart", "Decorative", Decorative);
+
+            iniFile.WriteInteger("Chart", "MaleColor", MaleColor.ToArgb());
+            iniFile.WriteInteger("Chart", "FemaleColor", FemaleColor.ToArgb());
+            iniFile.WriteInteger("Chart", "UnkSexColor", UnkSexColor.ToArgb());
+            iniFile.WriteInteger("Chart", "UnHusbandColor", UnHusbandColor.ToArgb());
+            iniFile.WriteInteger("Chart", "UnWifeColor", UnWifeColor.ToArgb());
+
+            iniFile.WriteString("Chart", "FontName", DefFontName);
+            iniFile.WriteInteger("Chart", "FontSize", DefFontSize);
+            iniFile.WriteInteger("Chart", "FontColor", DefFontColor.ToArgb());
+            iniFile.WriteInteger("Chart", "FontStyle", (byte)DefFontStyle);
         }
     }
 }

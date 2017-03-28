@@ -107,7 +107,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="GKCalendarPlugin.eng">
+    <None Include="GKCalendarPlugin.enu">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="GKCalendarPlugin.pol">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="GKCalendarPlugin.rus">

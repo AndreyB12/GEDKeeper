@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -27,8 +27,9 @@ namespace GKCore.Interfaces
         /// </summary>
         IHost Host { get; }
 
-        void BaseChanged(IBaseWindow aBase);
-        void BaseClosed(IBaseWindow aBase);
+        void BaseChanged(IBaseWindow baseWin);
+        void BaseClosed(IBaseWindow baseWin);
+        void BaseRenamed(IBaseWindow baseWin, string oldName, string newName);
 
         void WidgetInit(IHost host);
         void WidgetEnable();

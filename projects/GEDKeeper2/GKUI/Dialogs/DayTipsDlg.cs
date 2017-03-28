@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Drawing;
 using System.Windows.Forms;
 
 using GKCommon;
@@ -36,45 +35,67 @@ namespace GKUI.Dialogs
 
         public DayTipsDlg()
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.Image1.Image = global::GKResources.iTipsLight;
-            this.btnClose.Image = (Image)MainWin.ResourceManager.GetObjectEx("iBtnCancel");
+            Image1.Image = GKResources.iTipsLight;
+            btnClose.Image = GKResources.iBtnCancel;
 
-            this.fTips = new StringList();
+            fTips = new StringList();
 
             // SetLang()
-            this.btnClose.Text = LangMan.LS(LSID.LSID_DlgClose);
-            this.chkShow.Text = LangMan.LS(LSID.LSID_StartupTips);
-            this.btnNextTip.Text = LangMan.LS(LSID.LSID_Next);
-            this.lblTitle.Text = LangMan.LS(LSID.LSID_YouKnowWhat);
+            btnClose.Text = LangMan.LS(LSID.LSID_DlgClose);
+            chkShow.Text = LangMan.LS(LSID.LSID_StartupTips);
+            btnNextTip.Text = LangMan.LS(LSID.LSID_Next);
+            lblTitle.Text = LangMan.LS(LSID.LSID_YouKnowWhat);
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                this.fTips.Dispose();
+                fTips.Dispose();
             }
             base.Dispose(disposing);
         }
 
         private void GetNextTip()
         {
-            if (this.fTips.Count > 0)
+            if (fTips.Count > 0)
             {
-                this.txtTip.Text = this.fTips[0];
-                this.fTips.Delete(0);
+                string tip = fTips[0];
+
+                // processing "title's directives"
+                if (!string.IsNullOrEmpty(tip) && tip[0] == '#') {
+                    tip = tip.Substring(1);
+                    lblTitle.Text = tip;
+
+                    fTips.Delete(0);
+                    tip = fTips[0];
+                }
+
+                txtTip.Text = tip;
+                fTips.Delete(0);
             }
-            this.btnNextTip.Enabled = (this.fTips.Count > 0);
+            btnNextTip.Enabled = (fTips.Count > 0);
         }
 
-        private void NextTipBtn_Click(object sender, EventArgs e)
+        private void btnNextTip_Click(object sender, EventArgs e)
         {
-            this.GetNextTip();
+            GetNextTip();
         }
 
-        public static bool ShowTipsEx(string caption, bool showTipsChecked, StringList tips)
+        /// <summary>
+        /// Shows MOTD window.
+        /// </summary>
+        /// <param name="caption">Window title.</param>
+        /// <param name="showTipsChecked">Initial state of the "Show on the
+        /// application startup" option.</param>
+        /// <param name="tips">List of messahes to show.</param>
+        /// <param name="parent">handle to the parent window.</param>
+        /// <returns>true if user wants to view MOTD window on the next
+        /// application startup and false otherwise.</returns>
+        public static bool ShowTipsEx(string caption, bool showTipsChecked,
+                                      StringList tips, IntPtr parent)
         {
             bool result;
             using (DayTipsDlg dlg = new DayTipsDlg())
@@ -84,7 +105,9 @@ namespace GKUI.Dialogs
                 dlg.lblTitle.Text = caption;
                 dlg.fTips.Assign(tips);
                 dlg.GetNextTip();
-                dlg.StartPosition = FormStartPosition.CenterScreen;
+
+                UIHelper.CenterFormByParent(dlg, parent);
+
                 dlg.ShowDialog();
 
                 result = dlg.chkShow.Checked;

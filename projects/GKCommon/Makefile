@@ -8,43 +8,43 @@ include $(includemk)toolchain.mk
 project := $(gkcommon)
 projectext := .dll
 
-# Get directories list for `vpath %.resx` via (run from this directory):
-# find -regex '.+\.resx' | sed 's/\(.\+\)\/.\+/\1 \\/' | awk '!a[$0]++' | sed -n "x;/.\+/ p;g;$ s/\(.\+\) \\\\/\1/; $ p"
-vpath %.resx GKCommon/Controls
-
 objdir := obj/$(releasetype)/
 objdirdos := obj\\$(releasetype)\\
 outdir := $(objdir)
 outdirdos := $(objdirdos)
 installdir := ../../
 
+ifeq ($(windows), $(softwareplatform))
+  vsproj := GKCommon.mswin.csproj
+else
+  vsproj := GKCommon.linux.csproj
+endif
+
 # Get `sources` via (run from this directory):
 # find -regex '.+\.cs' | sed 's/\(.\+\)/\1 \\/' | sort | sed -n "x;/.\+/ p;g;$ s/\(.\+\) \\\\/\1/; $ p"
 # Or (this is more valid -- it takes data from a project file):
-# grep "[[:space:]]\+<Compile[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>" GEDKeeper2.mswin.csproj | sed "y/\\\\/\//;s/[[:space:]]\\+<Compile[[:space:]]\+Include=\"\(.*\)\"\([[:space:]]\?\/\)\?>/.\/\1 \\\\/" | sort | sed -n "x;/.\+/ p;g;$ s/\(.\+\) \\\\/\1/; $ p"
-# grep "[[:space:]]\+<Compile[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>" GEDKeeper2.linux.csproj | sed "y/\\\\/\//;s/[[:space:]]\\+<Compile[[:space:]]\+Include=\"\(.*\)\"\([[:space:]]\?\/\)\?>/.\/\1 \\\\/" | sort | sed -n "x;/.\+/ p;g;$ s/\(.\+\) \\\\/\1/; $ p"
+# grep "[[:space:]]\+<Compile[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>" GKCommon.mswin.csproj | sed "y/\\\\/\//;s/[[:space:]]\\+<Compile[[:space:]]\+Include=\"\(.*\)\"\([[:space:]]\?\/\)\?>/.\/\1 \\\\/" | sort | sed -n "x;/.\+/ p;g;$ s/\(.\+\) \\\\/\1/; $ p"
+# grep "[[:space:]]\+<Compile[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>" GKCommon.linux.csproj | sed "y/\\\\/\//;s/[[:space:]]\\+<Compile[[:space:]]\+Include=\"\(.*\)\"\([[:space:]]\?\/\)\?>/.\/\1 \\\\/" | sort | sed -n "x;/.\+/ p;g;$ s/\(.\+\) \\\\/\1/; $ p"
 # Because `$(sources)` must (may) have different values for Windows and Linux targets.
 ifeq ($(windows), $(softwareplatform))
 
 # `$(sources)` for `$(windows)`
 sources := \
 ./AssemblyInfo.cs \
-./Externals/CSV/CSVReader.cs \
-./Externals/CSV/StringConverter.cs \
+./Externals/CSVReader.cs \
 ./Externals/IniFiles/IniFileBlankLine.cs \
 ./Externals/IniFiles/IniFileCommentary.cs \
 ./Externals/IniFiles/IniFileElement.cs \
-./Externals/IniFiles/IniFileReader.cs \
+./Externals/IniFiles/IniFileEx.cs \
 ./Externals/IniFiles/IniFileSection.cs \
 ./Externals/IniFiles/IniFileSectionStart.cs \
 ./Externals/IniFiles/IniFileSettings.cs \
 ./Externals/IniFiles/IniFileValue.cs \
-./Externals/IniFiles/IniFileWriter.cs \
-./Externals/IniFiles/IniFiles.cs \
 ./Externals/ListTimSort.cs \
 ./Externals/MapiMailMessage.cs \
 ./Externals/ZipStorer.cs \
 ./GEDCOM/EGEDCOMException.cs \
+./GEDCOM/Extensions/GEDCOMCutoutPosition.cs \
 ./GEDCOM/GEDCOMAddress.cs \
 ./GEDCOM/GEDCOMAlias.cs \
 ./GEDCOM/GEDCOMAssociation.cs \
@@ -80,6 +80,8 @@ sources := \
 ./GEDCOM/GEDCOMIndividualOrdinance.cs \
 ./GEDCOM/GEDCOMIndividualRecord.cs \
 ./GEDCOM/GEDCOMInterfaces.cs \
+./GEDCOM/GEDCOMLanguage.cs \
+./GEDCOM/GEDCOMLanguageID.cs \
 ./GEDCOM/GEDCOMList.cs \
 ./GEDCOM/GEDCOMLocationRecord.cs \
 ./GEDCOM/GEDCOMMap.cs \
@@ -114,27 +116,23 @@ sources := \
 ./GEDCOM/MatchParams.cs \
 ./GEDCOM/XRefReplacer.cs \
 ./GKCommon/BaseObject.cs \
-./GKCommon/CRC32.cs \
 ./GKCommon/CalendarConverter.cs \
 ./GKCommon/CalendarData.cs \
 ./GKCommon/Controls/ExtResources.Designer.cs \
+./GKCommon/Controls/GKListView.cs \
 ./GKCommon/Controls/GKScrollableControl.cs \
 ./GKCommon/Controls/HyperView.cs \
 ./GKCommon/Controls/ImageBox.cs \
-./GKCommon/Controls/ImageView.Designer.cs \
 ./GKCommon/Controls/ImageView.cs \
+./GKCommon/Controls/ImageView.Designer.cs \
 ./GKCommon/Controls/LogChart.cs \
-./GKCommon/Controls/ReflectionHelper.cs \
-./GKCommon/Controls/SlideList.cs \
 ./GKCommon/Controls/WizardPages.cs \
-./GKCommon/ConvHelper.cs \
 ./GKCommon/EnumSet.cs \
 ./GKCommon/ExpCalculator.cs \
 ./GKCommon/ExtList.cs \
 ./GKCommon/ExtRect.cs \
-./GKCommon/FileHelper.cs \
 ./GKCommon/GKResourceManager.cs \
-./GKCommon/GfxHelper.cs \
+./GKCommon/ImportUtils.cs \
 ./GKCommon/IndistinctMatching.cs \
 ./GKCommon/IniFile.cs \
 ./GKCommon/Logger.cs \
@@ -147,10 +145,9 @@ sources := \
 ./GKCommon/SmartGraph/IGraph.cs \
 ./GKCommon/SmartGraph/IVertex.cs \
 ./GKCommon/SmartGraph/Vertex.cs \
-./GKCommon/SortHelper.cs \
 ./GKCommon/StringList.cs \
 ./GKCommon/StringTokenizer.cs \
-./GKCommon/SysInfo.cs \
+./GKCommon/SysUtils.cs \
 ./GKCommon/Tween.cs \
 ./GKCommon/UDN.cs \
 ./GKCommon/UIHelper.cs \
@@ -175,6 +172,7 @@ sources := \
 ./GKCore/Interfaces/IProgressController.cs \
 ./GKCore/Interfaces/ISearchStrategy.cs \
 ./GKCore/Interfaces/ISubscriber.cs \
+./GKCore/Interfaces/IUndoManager.cs \
 ./GKCore/Interfaces/IWidget.cs \
 ./GKCore/Interfaces/IWorkWindow.cs \
 ./GKCore/Types/DateFormat.cs \
@@ -187,11 +185,11 @@ sources := \
 ./GKCore/Types/MultimediaKind.cs \
 ./GKCore/Types/NameEntry.cs \
 ./GKCore/Types/NameFormat.cs \
-./GKCore/Types/PGNode.cs \
-./GKCore/Types/PGNodeType.cs \
 ./GKCore/Types/PatriarchObj.cs \
 ./GKCore/Types/PedigreeFormat.cs \
 ./GKCore/Types/PersonEventKind.cs \
+./GKCore/Types/PGNode.cs \
+./GKCore/Types/PGNodeType.cs \
 ./GKCore/Types/RecordAction.cs \
 ./GKCore/Types/RelationKind.cs \
 ./GKCore/Types/ShieldState.cs \
@@ -204,22 +202,20 @@ else
 # `$(sources)` for `$(linux)`
 sources := \
 ./AssemblyInfo.cs \
-./Externals/CSV/CSVReader.cs \
-./Externals/CSV/StringConverter.cs \
+./Externals/CSVReader.cs \
 ./Externals/IniFiles/IniFileBlankLine.cs \
 ./Externals/IniFiles/IniFileCommentary.cs \
 ./Externals/IniFiles/IniFileElement.cs \
-./Externals/IniFiles/IniFileReader.cs \
+./Externals/IniFiles/IniFileEx.cs \
 ./Externals/IniFiles/IniFileSection.cs \
 ./Externals/IniFiles/IniFileSectionStart.cs \
 ./Externals/IniFiles/IniFileSettings.cs \
 ./Externals/IniFiles/IniFileValue.cs \
-./Externals/IniFiles/IniFileWriter.cs \
-./Externals/IniFiles/IniFiles.cs \
 ./Externals/ListTimSort.cs \
 ./Externals/MapiMailMessage.cs \
 ./Externals/ZipStorer.cs \
 ./GEDCOM/EGEDCOMException.cs \
+./GEDCOM/Extensions/GEDCOMCutoutPosition.cs \
 ./GEDCOM/GEDCOMAddress.cs \
 ./GEDCOM/GEDCOMAlias.cs \
 ./GEDCOM/GEDCOMAssociation.cs \
@@ -255,6 +251,8 @@ sources := \
 ./GEDCOM/GEDCOMIndividualOrdinance.cs \
 ./GEDCOM/GEDCOMIndividualRecord.cs \
 ./GEDCOM/GEDCOMInterfaces.cs \
+./GEDCOM/GEDCOMLanguage.cs \
+./GEDCOM/GEDCOMLanguageID.cs \
 ./GEDCOM/GEDCOMList.cs \
 ./GEDCOM/GEDCOMLocationRecord.cs \
 ./GEDCOM/GEDCOMMap.cs \
@@ -289,27 +287,23 @@ sources := \
 ./GEDCOM/MatchParams.cs \
 ./GEDCOM/XRefReplacer.cs \
 ./GKCommon/BaseObject.cs \
-./GKCommon/CRC32.cs \
 ./GKCommon/CalendarConverter.cs \
 ./GKCommon/CalendarData.cs \
 ./GKCommon/Controls/ExtResources.Designer.cs \
+./GKCommon/Controls/GKListView.cs \
 ./GKCommon/Controls/GKScrollableControl.cs \
 ./GKCommon/Controls/HyperView.cs \
 ./GKCommon/Controls/ImageBox.cs \
-./GKCommon/Controls/ImageView.Designer.cs \
 ./GKCommon/Controls/ImageView.cs \
+./GKCommon/Controls/ImageView.Designer.cs \
 ./GKCommon/Controls/LogChart.cs \
-./GKCommon/Controls/ReflectionHelper.cs \
-./GKCommon/Controls/SlideList.cs \
 ./GKCommon/Controls/WizardPages.cs \
-./GKCommon/ConvHelper.cs \
-./GKCommon/ExpCalculator.cs \
 ./GKCommon/EnumSet.cs \
+./GKCommon/ExpCalculator.cs \
 ./GKCommon/ExtList.cs \
 ./GKCommon/ExtRect.cs \
-./GKCommon/FileHelper.cs \
 ./GKCommon/GKResourceManager.cs \
-./GKCommon/GfxHelper.cs \
+./GKCommon/ImportUtils.cs \
 ./GKCommon/IndistinctMatching.cs \
 ./GKCommon/IniFile.cs \
 ./GKCommon/Logger.cs \
@@ -322,10 +316,9 @@ sources := \
 ./GKCommon/SmartGraph/IGraph.cs \
 ./GKCommon/SmartGraph/IVertex.cs \
 ./GKCommon/SmartGraph/Vertex.cs \
-./GKCommon/SortHelper.cs \
 ./GKCommon/StringList.cs \
 ./GKCommon/StringTokenizer.cs \
-./GKCommon/SysInfo.cs \
+./GKCommon/SysUtils.cs \
 ./GKCommon/Tween.cs \
 ./GKCommon/UDN.cs \
 ./GKCommon/UIHelper.cs \
@@ -350,6 +343,7 @@ sources := \
 ./GKCore/Interfaces/IProgressController.cs \
 ./GKCore/Interfaces/ISearchStrategy.cs \
 ./GKCore/Interfaces/ISubscriber.cs \
+./GKCore/Interfaces/IUndoManager.cs \
 ./GKCore/Interfaces/IWidget.cs \
 ./GKCore/Interfaces/IWorkWindow.cs \
 ./GKCore/Types/DateFormat.cs \
@@ -362,11 +356,11 @@ sources := \
 ./GKCore/Types/MultimediaKind.cs \
 ./GKCore/Types/NameEntry.cs \
 ./GKCore/Types/NameFormat.cs \
-./GKCore/Types/PGNode.cs \
-./GKCore/Types/PGNodeType.cs \
 ./GKCore/Types/PatriarchObj.cs \
 ./GKCore/Types/PedigreeFormat.cs \
 ./GKCore/Types/PersonEventKind.cs \
+./GKCore/Types/PGNode.cs \
+./GKCore/Types/PGNodeType.cs \
 ./GKCore/Types/RecordAction.cs \
 ./GKCore/Types/RelationKind.cs \
 ./GKCore/Types/ShieldState.cs \
@@ -379,16 +373,15 @@ endif
 # Get files list for `resources` via (run from this directory):
 # find -regex '.+\.resx' | sed 's/.\+\/\(.\+\)\.resx/\1.resources \\/' | sort
 # Or (this is more valid -- it takes data from a project file):
-# grep "[[:space:]]\+<EmbeddedResource[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>" GKCommon.mswin.csproj | sed "y/\\\\/\//;s/[[:space:]]\\+<EmbeddedResource[[:space:]]\+Include=.*[\/|\"]\(.*\)\.resx\"\([[:space:]]\?\/\)\?>/\1.resources \\\\/" | sort
-# grep "[[:space:]]\+<EmbeddedResource[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>" GKCommon.linux.csproj | sed "y/\\\\/\//;s/[[:space:]]\\+<EmbeddedResource[[:space:]]\+Include=.*[\/|\"]\(.*\)\.resx\"\([[:space:]]\?\/\)\?>/\1.resources \\\\/" | sort
+# sed -n -e "/[[:space:]]\+<EmbeddedResource[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>/ {y/\\\\/\//;s/[[:space:]]\\+<EmbeddedResource[[:space:]]\+Include=.*[\"]\(.*\)\.resx\"\([[:space:]]\?\/\)\?>/\1.resources \\\\/;s/\//\./g;P}" < GKCommon.mswin.csproj | sort
+# sed -n -e "/[[:space:]]\+<EmbeddedResource[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>/ {y/\\\\/\//;s/[[:space:]]\\+<EmbeddedResource[[:space:]]\+Include=.*[\"]\(.*\)\.resx\"\([[:space:]]\?\/\)\?>/\1.resources \\\\/;s/\//\./g;P}" < GKCommon.linux.csproj | sort
 # Because `$(resources)` must (may) have different values for Windows and Linux targets.
 ifeq ($(windows), $(softwareplatform))
 
 # `$(resources)` for `$(windows)`
 resources := \
 $(addprefix $(objdir), \
-ExtResources.resources \
-SlideList.resources \
+GKCommon.Controls.ExtResources.resources \
 )
 
 else
@@ -396,11 +389,12 @@ else
 # `$(resources)` for `$(linux)`
 resources := \
 $(addprefix $(objdir), \
-ExtResources.resources \
-SlideList.resources \
+GKCommon.Controls.ExtResources.resources \
 )
 
 endif
+
+resdep := $(objdir)resmake.d
 
 ifeq ($(windows), $(softwareplatform))
 # Settings for Windows.
@@ -494,9 +488,9 @@ clean:
 $(objdir):
 	@mkdir -p $(objdir)
 
-$(resources): | $(objdir)
+$(resdep): | $(objdir)
 
-$(outdir)$(project)$(projectext): $(resources) $(sources)
+$(outdir)$(project)$(projectext): $(resdep) $(resources) $(sources)
 ifeq ($(windows), $(softwareplatform))
 	$(compiler) //out:$(outdirdos)$(project)$(projectext) $(compilerflags) $(patsubst $(objdir)%,//resource:$(objdirdos)\\%,$(resources)) $(sources)
 else
@@ -504,9 +498,7 @@ else
 endif
 	@echo "**** $(project)$(projectext): build completed ($(releasetype) for $(hardwareplatform), $(softwareplatform))."
 
-$(objdir)%.resources: %.resx
-ifeq ($(windows), $(softwareplatform))
-	$(rc) $(rcflags) //compile $<,$@
-else
-	@echo "rc: not yet implemented for $(linux)"
-endif
+$(resdep): $(vsproj)
+	sed -n -e "/[[:space:]]\+<EmbeddedResource[[:space:]]\+Include=\".*\"\([[:space:]]\?\/\)\?>/ {y/\\\\/\//;s/[[:space:]]\\+<EmbeddedResource[[:space:]]\+Include=.*[\"]\(.*\.resx\)\"\([[:space:]]\?\/\)\?>/\1/;h;y/\//\./;s/\(.\+\.\)resx/$(subst /,\\/,$(objdir))\1resources/;G;s/\(.\+\)\n\(.\+\)/\1: \2\n\t$$\(rc\) $$\(rcflags\) \/\/compile $$<,$$\@/p}" < $< > $@
+
+-include $(resdep)

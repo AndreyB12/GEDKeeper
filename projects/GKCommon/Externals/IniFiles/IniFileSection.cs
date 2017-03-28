@@ -27,7 +27,8 @@ namespace Externals.IniFiles
         /// above section's declaration. Returns "" if no comment is provided.</summary>
         public string Comment
         {
-            get { return Name == "" ? "" : getComment(sectionStart);
+            get {
+                return Name == "" ? "" : getComment(sectionStart);
             }
             set
             {
@@ -36,7 +37,7 @@ namespace Externals.IniFiles
             }
         }
 
-        void setComment(IniFileElement el, string comment)
+        private void setComment(IniFileElement el, string comment)
         {
             int index = parent.elements.IndexOf(el);
             if (IniFileSettings.CommentChars.Length == 0)
@@ -58,26 +59,28 @@ namespace Externals.IniFiles
             }
         }
 
-        string getComment(IniFileElement el)
+        private string getComment(IniFileElement el)
         {
             int index = parent.elements.IndexOf(el);
             if (index != 0 && parent.elements[index - 1] is IniFileCommentary)
                 return ((IniFileCommentary)parent.elements[index - 1]).Comment;
-            else return "";
+
+            return "";
         }
         
-        IniFileValue GetValue(string key)
+        private IniFileValue GetValue(string key)
         {
             string lower = key.ToLowerInvariant();
+
             for (int i = 0; i < elements.Count; i++)
             {
                 IniFileValue value = elements[i] as IniFileValue;
-                if (value != null)
-                {
-                    if (value.Key == key || (!IniFileSettings.CaseSensitive && value.Key.ToLowerInvariant() == lower))
-                        return value;
-                }
+                if (value == null) continue;
+
+                if (value.Key == key || (!IniFileSettings.CaseSensitive && value.Key.ToLowerInvariant() == lower))
+                    return value;
             }
+
             return null;
         }
 
@@ -88,6 +91,7 @@ namespace Externals.IniFiles
             if (val == null) return;
             setComment(val, comment);
         }
+
         /// <summary>Sets the inline comment for given key.</summary>
         public void SetInlineComment(string key, string comment)
         {
@@ -121,18 +125,22 @@ namespace Externals.IniFiles
         /// <summary>Renames a key.</summary>
         public void RenameKey(string key, string newName)
         {
-            IniFileValue v = GetValue(key);
-            if (key == null) return;
-            v.Key = newName;
+            IniFileValue val = GetValue(key);
+            if (val == null) return;
+
+            val.Key = newName;
         }
+
         /// <summary>Deletes a key.</summary>
         public void DeleteKey(string key)
         {
-            IniFileValue v = GetValue(key);
-            if (key == null) return;
-            parent.elements.Remove(v);
-            elements.Remove(v);
+            IniFileValue val = GetValue(key);
+            if (val == null) return;
+
+            parent.elements.Remove(val);
+            elements.Remove(val);
         }
+
         /// <summary>Gets or sets value of the key</summary>
         /// <param name="key">Name of key.</param>
         public string this[string key]
@@ -144,8 +152,7 @@ namespace Externals.IniFiles
             }
             set
             {
-                IniFileValue v;
-                v = GetValue(key);
+                IniFileValue v = GetValue(key);
                 //if (!IniFileSettings.AllowEmptyValues && value == "") {
                 //    if (v != null) {
                 //        elements.Remove(v);
@@ -202,6 +209,7 @@ namespace Externals.IniFiles
             }
             else
                 ret = IniFileValue.FromData(key, value);
+
             if (prev == null) {
                 elements.Insert(elements.IndexOf(sectionStart) + 1, ret);
                 parent.elements.Insert(parent.elements.IndexOf(sectionStart) + 1, ret);

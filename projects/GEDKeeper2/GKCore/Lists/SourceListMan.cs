@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,10 +29,10 @@ namespace GKCore.Lists
     /// </summary>
     public enum SourceColumnType
     {
-        sctShortName,
-        sctAuthor,
-        sctTitle,
-        sctChangeDate
+        ctShortName,
+        ctAuthor,
+        ctTitle,
+        ctChangeDate
     }
 
     /// <summary>
@@ -43,15 +42,10 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_ShortTitle, DataType.dtString, 120, true);
-            this.AddStatic(LSID.LSID_Author, DataType.dtString, 200, true);
-            this.AddStatic(LSID.LSID_Title, DataType.dtString, 200, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public SourceListColumns() : base()
-        {
-            InitData(typeof(SourceColumnType));
+            AddColumn(LSID.LSID_ShortTitle, DataType.dtString, 120, true);
+            AddColumn(LSID.LSID_Author, DataType.dtString, 200, true);
+            AddColumn(LSID.LSID_Title, DataType.dtString, 200, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -62,38 +56,46 @@ namespace GKCore.Lists
     {
         private GEDCOMSourceRecord fRec;
 
+        public SourceListMan(GEDCOMTree tree) : base(tree, new SourceListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(this.fRec.FiledByEntry, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fRec.FiledByEntry, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMSourceRecord);
+            fRec = (aRec as GEDCOMSourceRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    return this.fRec.FiledByEntry.Trim();
-                case 1:
-                    return this.fRec.Originator.Text.Trim();
-                case 2:
-                    return this.fRec.Title.Text.Trim();
-                case 3:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((SourceColumnType)colType)
+            {
+                case SourceColumnType.ctShortName:
+                    result = fRec.FiledByEntry.Trim();
+                    break;
 
-        public SourceListMan(GEDCOMTree tree) : base(tree, new SourceListColumns())
-        {
+                case SourceColumnType.ctAuthor:
+                    result = fRec.Originator.Text.Trim();
+                    break;
+
+                case SourceColumnType.ctTitle:
+                    result = fRec.Title.Text.Trim();
+                    break;
+
+                case SourceColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

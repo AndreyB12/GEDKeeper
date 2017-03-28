@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -24,26 +24,26 @@ namespace GKCommon.GEDCOM
     {
         public GEDCOMChildLinkageStatus ChildLinkageStatus
         {
-            get { return GEDCOMUtils.GetChildLinkageStatusVal(base.GetTagStringValue("STAT")); }
-            set { base.SetTagStringValue("STAT", GEDCOMUtils.GetChildLinkageStatusStr(value)); }
+            get { return GEDCOMUtils.GetChildLinkageStatusVal(GetTagStringValue("STAT")); }
+            set { SetTagStringValue("STAT", GEDCOMUtils.GetChildLinkageStatusStr(value)); }
         }
 
         public GEDCOMPedigreeLinkageType PedigreeLinkageType
         {
-            get { return GEDCOMUtils.GetPedigreeLinkageTypeVal(base.GetTagStringValue("PEDI")); }
-            set { base.SetTagStringValue("PEDI", GEDCOMUtils.GetPedigreeLinkageTypeStr(value)); }
+            get { return GEDCOMUtils.GetPedigreeLinkageTypeVal(GetTagStringValue("PEDI")); }
+            set { SetTagStringValue("PEDI", GEDCOMUtils.GetPedigreeLinkageTypeStr(value)); }
         }
 
         public GEDCOMFamilyRecord Family
         {
-            get { return (base.Value as GEDCOMFamilyRecord); }
-            set { base.Value = value; }
+            get { return (Value as GEDCOMFamilyRecord); }
+            set { Value = value; }
         }
 
         protected override void CreateObj(GEDCOMTree owner, GEDCOMObject parent)
         {
             base.CreateObj(owner, parent);
-            this.SetName("FAMC");
+            SetName("FAMC");
         }
 
         public GEDCOMChildToFamilyLink(GEDCOMTree owner, GEDCOMObject parent, string tagName, string tagValue) : base(owner, parent, tagName, tagValue)

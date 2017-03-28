@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,6 +25,21 @@ using System.Windows.Forms;
 
 namespace GKCommon.Controls
 {
+    public class HintRequestEventArgs : EventArgs
+    {
+        public int FragmentNumber { get; private set; }
+        public int Size { get; private set; }
+        public string Hint { get; set; }
+
+        public HintRequestEventArgs(int fragmentNumber, int size)
+        {
+            FragmentNumber = fragmentNumber;
+            Size = size;
+        }
+    }
+
+    public delegate void HintRequestEventHandler(object sender, HintRequestEventArgs args);
+
     /// <summary>
     /// 
     /// </summary>
@@ -44,22 +59,24 @@ namespace GKCommon.Controls
             public Rectangle Rect;
         }
 
-        private readonly Brush FRAG_BRUSH = new SolidBrush(Color.Green);
-        private readonly Brush EMPTY_BRUSH = new SolidBrush(Color.Gray);
+        private static readonly Brush FRAG_BRUSH = new SolidBrush(Color.Green);
+        private static readonly Brush EMPTY_BRUSH = new SolidBrush(Color.Gray);
         
         private readonly List<Fragment> fList;
         private readonly ToolTip fToolTip;
         private string fHint;
 
+        public event HintRequestEventHandler OnHintRequest;
+
         public LogChart()
         {
-            this.fList = new List<Fragment>();
+            fList = new List<Fragment>();
 
-            this.fToolTip = new ToolTip();
-            this.fToolTip.AutoPopDelay = 5000;
-            this.fToolTip.InitialDelay = 250;
-            this.fToolTip.ReshowDelay = 50;
-            this.fToolTip.ShowAlways = true;
+            fToolTip = new ToolTip();
+            fToolTip.AutoPopDelay = 5000;
+            fToolTip.InitialDelay = 250;
+            fToolTip.ReshowDelay = 50;
+            fToolTip.ShowAlways = true;
         }
 
         protected override void Dispose(bool disposing)
@@ -74,7 +91,7 @@ namespace GKCommon.Controls
         public void Clear()
         {
             fList.Clear();
-            this.UpdateContents();
+            UpdateContents();
         }
 
         public void AddFragment(int val)
@@ -89,7 +106,7 @@ namespace GKCommon.Controls
 
             fList.Add(frag);
 
-            this.UpdateContents();
+            UpdateContents();
         }
 
         private void UpdateContents()
@@ -97,7 +114,7 @@ namespace GKCommon.Controls
             int count = fList.Count;
             if (count == 0) return;
             
-            int wid = this.Width - (count - 1);
+            int wid = Width - (count - 1);
 
             Fragment frag;
 
@@ -131,7 +148,7 @@ namespace GKCommon.Controls
             int d = wid - resWidth;
             if (d > 0) {
                 // the difference distribute between the highest allocated fragments
-                List<Fragment> ordList = new List<Fragment>(this.fList);
+                List<Fragment> ordList = new List<Fragment>(fList);
                 ordList.Sort(new FragmentComparer());
 
                 int idx = 0;
@@ -153,11 +170,11 @@ namespace GKCommon.Controls
                 frag = fList[i];
 
                 frag.X = x;
-                frag.Rect = new Rectangle(x, 0, frag.Width, this.Height);
+                frag.Rect = new Rectangle(x, 0, frag.Width, Height);
                 x = x + (frag.Width + 1);
             }
 
-            base.Invalidate();
+            Invalidate();
         }
 
         private class FragmentComparer: IComparer<Fragment>
@@ -172,7 +189,7 @@ namespace GKCommon.Controls
         {
             base.OnPaint(e);
             
-            if (this.Width <= 0 || this.Height <= 0) return;
+            if (Width <= 0 || Height <= 0) return;
 
             Graphics gfx = e.Graphics;
 
@@ -180,16 +197,25 @@ namespace GKCommon.Controls
             if (count > 0) {
                 for (int i = 0; i < count; i++) {
                     Fragment frag = fList[i];
-                    this.DrawRect(gfx, frag.X, frag.Width, FRAG_BRUSH);
+                    DrawRect(gfx, frag.X, frag.Width, FRAG_BRUSH);
                 }
             } else {
-                this.DrawRect(gfx, 0, this.Width, EMPTY_BRUSH);
+                DrawRect(gfx, 0, Width, EMPTY_BRUSH);
             }
         }
 
         private void DrawRect(Graphics gfx, int x, int width, Brush lb)
         {
-            gfx.FillRectangle(lb, x, 0, width, this.Height);
+            gfx.FillRectangle(lb, x, 0, width, Height);
+        }
+
+        private string HintRequest(int fragmentNumber, int size)
+        {
+            if (OnHintRequest == null) return string.Empty;
+
+            HintRequestEventArgs args = new HintRequestEventArgs(fragmentNumber, size);
+            OnHintRequest(this, args);
+            return args.Hint;
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -202,14 +228,13 @@ namespace GKCommon.Controls
                 Fragment frag = fList[i];
 
                 if (frag.Rect.Contains(e.X, e.Y)) {
-                    string st = (i + 1).ToString();
-                    hint = "Фрагмент: " + st + ", размер = " + frag.SrcVal.ToString();
+                    hint = HintRequest(i + 1, frag.SrcVal);
                     break;
                 }
             }
 
-            if (this.fHint != hint) {
-                this.fHint = hint;
+            if (fHint != hint) {
+                fHint = hint;
                 fToolTip.Show(hint, this, e.X, e.Y, 3000);
             }
         }

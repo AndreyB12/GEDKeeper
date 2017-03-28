@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,11 +25,11 @@ using System.Runtime.InteropServices;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKFlowInputPlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 FlowInput plugin")]
+[assembly: AssemblyDescription("GEDKeeper FlowInput plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -87,23 +87,17 @@ namespace GKFlowInputPlugin
         /* 507 */ LSID_NameInvalid,
         /* 508 */ LSID_BasePersonInvalid,
         /* 509 */ LSID_SourceYearInvalid,
-        
+
         LSID_Marriage
     }
 
     public class Plugin : IPlugin
     {
-        private const string DISPLAY_NAME = "GKFlowInputPlugin";
-
+        private string fDisplayName = "GKFlowInputPlugin";
         private IHost fHost;
         private ILangMan fLangMan;
 
-        public string DisplayName {
-            get {
-                return (fLangMan == null) ? DISPLAY_NAME : this.fLangMan.LS(FLS.LSID_PluginTitle);
-            }
-        }
-
+        public string DisplayName { get { return fDisplayName; } }
         public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
 
@@ -126,21 +120,21 @@ namespace GKFlowInputPlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(FLS.LSID_PluginTitle);
             }
             catch (Exception ex)
             {
                 fHost.LogWrite("GKFlowInputPlugin.OnLanguageChange(): " + ex.Message);
             }
         }
-        
+
         public bool Startup(IHost host)
         {
             bool result = true;
             try
             {
-                this.fHost = host;
-                this.fLangMan = this.fHost.CreateLangMan(this);
+                fHost = host;
             }
             catch (Exception ex)
             {
@@ -155,7 +149,6 @@ namespace GKFlowInputPlugin
             bool result = true;
             try
             {
-                // Implement any shutdown code here
             }
             catch (Exception ex)
             {

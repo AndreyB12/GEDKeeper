@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -39,7 +39,7 @@ namespace GKCore
 
         public NamesTable()
         {
-            this.fNames = new Hashtable();
+            fNames = new Hashtable();
         }
 
         protected override void Dispose(bool disposing)
@@ -72,7 +72,7 @@ namespace GKCore
             }
 
             return cmp >= (int)Math.Round(len * 0.5);
-            // [Пав]ел/Павлович (3/5), [Ил]ья/Ильич (2/4)
+            // [Pav]el/Pavlovich (3/5), [Il]ja/Ilich (2/4)
         }
 
         #endregion
@@ -98,7 +98,7 @@ namespace GKCore
                         if (data[3] != "") {
                             nm.Sex = GKUtils.GetSexBySign(data[3][0]);
                         }
-                        this.fNames.Add(nm.Name, nm);
+                        fNames.Add(nm.Name, nm);
                     }
                 }
             } catch (Exception ex) {
@@ -110,7 +110,7 @@ namespace GKCore
         {
             using (StreamWriter strd = new StreamWriter(fileName, false, Encoding.GetEncoding(1251)))
             {
-                foreach (DictionaryEntry de in this.fNames)
+                foreach (DictionaryEntry de in fNames)
                 {
                     NameEntry nm = (NameEntry)de.Value;
                     string st = nm.Name + ";" + nm.F_Patronymic + ";" + nm.M_Patronymic + ";" + GKData.SexData[(int)nm.Sex].Sign;
@@ -125,20 +125,20 @@ namespace GKCore
         {
             NameEntry result = new NameEntry();
             result.Name = name;
-            this.fNames.Add(name, result);
+            fNames.Add(name, result);
             return result;
         }
 
         public NameEntry FindName(string name)
         {
-            return (this.fNames[name] as NameEntry);
+            return (fNames[name] as NameEntry);
         }
 
         public string GetPatronymicByName(string name, GEDCOMSex sex)
         {
             string result = "";
 
-            NameEntry nm = this.FindName(name);
+            NameEntry nm = FindName(name);
             if (nm != null)
             {
                 switch (sex)
@@ -162,7 +162,7 @@ namespace GKCore
 
             if (!string.IsNullOrEmpty(patronymic))
             {
-                foreach (NameEntry nm in this.fNames.Values)
+                foreach (NameEntry nm in fNames.Values)
                 {
                     if (nm.F_Patronymic == patronymic || nm.M_Patronymic == patronymic)
                     {
@@ -177,7 +177,7 @@ namespace GKCore
 
         public GEDCOMSex GetSexByName(string name)
         {
-            NameEntry nm = this.FindName(name);
+            NameEntry nm = FindName(name);
             return ((nm == null) ? GEDCOMSex.svNone : nm.Sex);
         }
 
@@ -185,9 +185,9 @@ namespace GKCore
         {
             if (string.IsNullOrEmpty(name)) return;
 
-            NameEntry nm = this.FindName(name);
+            NameEntry nm = FindName(name);
             if (nm == null) {
-                nm = this.AddName(name);
+                nm = AddName(name);
                 nm.Sex = sex;
             }
 
@@ -208,9 +208,9 @@ namespace GKCore
         {
             if (string.IsNullOrEmpty(name)) return;
             
-            NameEntry nm = this.FindName(name);
+            NameEntry nm = FindName(name);
             if (nm == null)
-                nm = this.AddName(name);
+                nm = AddName(name);
 
             if (nm.Sex == GEDCOMSex.svNone && sex >= GEDCOMSex.svMale && sex < GEDCOMSex.svUndetermined)
             {
@@ -225,10 +225,10 @@ namespace GKCore
             try
             {
                 string dummy, childName, childPat;
-                iRec.GetNameParts(out dummy, out childName, out childPat);
+                GKUtils.GetNameParts(iRec, out dummy, out childName, out childPat);
 
                 GEDCOMSex iSex = iRec.Sex;
-                this.SetNameSex(childName, iSex);
+                SetNameSex(childName, iSex);
 
                 GEDCOMIndividualRecord iFather, iMother;
                 iRec.GetParents(out iFather, out iMother);
@@ -236,11 +236,11 @@ namespace GKCore
                 if (iFather != null)
                 {
                     string fatherNam;
-                    iFather.GetNameParts(out dummy, out fatherNam, out dummy);
+                    GKUtils.GetNameParts(iFather, out dummy, out fatherNam, out dummy);
 
                     if (IsComparable(fatherNam, childPat))
                     {
-                        this.SetName(fatherNam, childPat, iSex);
+                        SetName(fatherNam, childPat, iSex);
                     }
                 }
             }

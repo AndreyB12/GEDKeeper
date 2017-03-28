@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -22,16 +22,17 @@ using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
+using GKCommon;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
 
 [assembly: AssemblyTitle("GKTextSearchPlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 TextSearch plugin")]
+[assembly: AssemblyDescription("GEDKeeper TextSearch plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -49,58 +50,43 @@ namespace GKTextSearchPlugin
         LSID_Search
     }
 
-    public class Plugin : IPlugin, ISubscriber
+    public sealed class Plugin : BaseObject, IPlugin, ISubscriber
     {
-        private const string DISPLAY_NAME = "GKTextSearchPlugin";
-
+        private string fDisplayName = "GKTextSearchPlugin";
         private IHost fHost;
         private ILangMan fLangMan;
-        
         private SearchManager fSearchMan;
 
-        public string DisplayName {
-            get {
-                return (fLangMan == null) ? DISPLAY_NAME : this.fLangMan.LS(TLS.LSID_PluginTitle);
-            }
-        }
-        
+        public string DisplayName { get { return fDisplayName; } }
         public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
+        public SearchManager SearchMan { get { return fSearchMan; } }
 
-        public SearchManager SearchMan
+        internal TextSearchWin fForm;
+
+        protected override void Dispose(bool disposing)
         {
-            get { return this.fSearchMan; }
+            if (disposing)
+            {
+                if (fForm != null) fForm.Dispose();
+            }
+            base.Dispose(disposing);
         }
+
+        #region IPlugin support
 
         public void Execute()
         {
-            if (this.fHost.IsUnix()) {
-                this.fHost.ShowWarning(@"This function is not supported in Linux");
+            if (fHost.IsUnix()) {
+                fHost.ShowWarning(@"This function is not supported in Linux");
                 return;
             }
 
             IBaseWindow curBase = fHost.GetCurrentFile();
             if (curBase == null) return;
 
-            TextSearchWin tsWin = new TextSearchWin(this, curBase);
-            tsWin.Show();
-        }
-
-        public void NotifyRecord(IBaseWindow aBase, object record, RecordAction action)
-        {
-            #if !__MonoCS__
-            if (aBase == null || record == null || this.fSearchMan == null) return;
-            
-            switch (action) {
-                case RecordAction.raEdit:
-                    this.fSearchMan.UpdateRecord(aBase, (GEDCOMRecord)record);
-                    break;
-
-                case RecordAction.raDelete:
-                    this.fSearchMan.DeleteRecord(aBase, ((GEDCOMRecord)record).XRef);
-                    break;
-            }
-            #endif
+            fForm = new TextSearchWin(this, curBase);
+            fForm.Show();
         }
         
         public void OnHostClosing(ref bool cancelClosing) {}
@@ -111,7 +97,10 @@ namespace GKTextSearchPlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(TLS.LSID_PluginTitle);
+
+                if (fForm != null) fForm.SetLang();
             }
             catch (Exception ex)
             {
@@ -124,9 +113,8 @@ namespace GKTextSearchPlugin
             bool result = true;
             try
             {
-                this.fHost = host;
-                this.fLangMan = this.fHost.CreateLangMan(this);
-                this.fSearchMan = new SearchManager(this);
+                fHost = host;
+                fSearchMan = new SearchManager(this);
             }
             catch (Exception ex)
             {
@@ -151,5 +139,28 @@ namespace GKTextSearchPlugin
             }
             return result;
         }
+
+        #endregion
+
+        #region ISubscriber support
+
+        public void NotifyRecord(IBaseWindow baseWin, object record, RecordAction action)
+        {
+            #if !__MonoCS__
+            if (baseWin == null || record == null || fSearchMan == null) return;
+
+            switch (action) {
+                case RecordAction.raEdit:
+                    fSearchMan.UpdateRecord(baseWin, (GEDCOMRecord)record);
+                    break;
+
+                case RecordAction.raDelete:
+                    fSearchMan.DeleteRecord(baseWin, ((GEDCOMRecord)record).XRef);
+                    break;
+            }
+            #endif
+        }
+
+        #endregion
     }
 }

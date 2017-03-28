@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Globalization;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
@@ -31,10 +30,10 @@ namespace GKCore.Lists
     /// </summary>
     public enum LocationColumnType
     {
-        lctName,
-        lctLati,
-        lctLong,
-        lctChangeDate
+        ctName,
+        ctLati,
+        ctLong,
+        ctChangeDate
     }
 
     /// <summary>
@@ -47,15 +46,10 @@ namespace GKCore.Lists
             NumberFormatInfo nfi = new NumberFormatInfo();
             nfi.NumberDecimalSeparator = ".";
 
-            this.AddStatic(LSID.LSID_Title, DataType.dtString, 300, true);
-            this.AddStatic(LSID.LSID_Latitude, DataType.dtFloat, 120, true, "0.000000", nfi);
-            this.AddStatic(LSID.LSID_Longitude, DataType.dtFloat, 120, true, "0.000000", nfi);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public LocationListColumns()
-        {
-            InitData(typeof(LocationColumnType));
+            AddColumn(LSID.LSID_Title, DataType.dtString, 300, true);
+            AddColumn(LSID.LSID_Latitude, DataType.dtFloat, 120, true, "0.000000", nfi);
+            AddColumn(LSID.LSID_Longitude, DataType.dtFloat, 120, true, "0.000000", nfi);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -66,38 +60,46 @@ namespace GKCore.Lists
     {
         private GEDCOMLocationRecord fRec;
 
+        public LocationListMan(GEDCOMTree tree) : base(tree, new LocationListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(this.fRec.LocationName, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fRec.LocationName, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMLocationRecord);
+            fRec = (aRec as GEDCOMLocationRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    return this.fRec.LocationName;
-                case 1:
-                    return this.fRec.Map.Lati;
-                case 2:
-                    return this.fRec.Map.Long;
-                case 3:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((LocationColumnType)colType)
+            {
+                case LocationColumnType.ctName:
+                    result = fRec.LocationName;
+                    break;
 
-        public LocationListMan(GEDCOMTree tree) : base(tree, new LocationListColumns())
-        {
+                case LocationColumnType.ctLati:
+                    result = fRec.Map.Lati;
+                    break;
+
+                case LocationColumnType.ctLong:
+                    result = fRec.Map.Long;
+                    break;
+
+                case LocationColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

@@ -119,7 +119,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="GKNamesBookPlugin.eng">
+    <None Include="GKNamesBookPlugin.enu">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="GKNamesBookPlugin.pol">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="GKNamesBookPlugin.rus">

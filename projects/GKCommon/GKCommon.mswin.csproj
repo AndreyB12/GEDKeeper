@@ -47,7 +47,7 @@
     <FileAlignment>4096</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <CodeAnalysisRuleSet>..\gk21.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>..\gk2rules.ruleset</CodeAnalysisRuleSet>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
@@ -61,33 +61,47 @@
     <FileAlignment>4096</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
-    <CodeAnalysisRuleSet>..\gk21.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>..\gk2rules.ruleset</CodeAnalysisRuleSet>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(CIMode)'=='true'">
+    <DefineConstants>$(DefineConstants);CI_MODE</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="LinqBridge">
+      <HintPath>libs\LinqBridge.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Management" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="YamlSerializer">
+      <HintPath>libs\YamlSerializer.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Externals\CSVReader.cs" />
     <Compile Include="Externals\IniFiles\IniFileBlankLine.cs" />
     <Compile Include="Externals\IniFiles\IniFileCommentary.cs" />
-    <Compile Include="Externals\IniFiles\IniFileReader.cs" />
     <Compile Include="Externals\IniFiles\IniFileSection.cs" />
     <Compile Include="Externals\IniFiles\IniFileSectionStart.cs" />
     <Compile Include="Externals\IniFiles\IniFileSettings.cs" />
     <Compile Include="Externals\IniFiles\IniFileValue.cs" />
-    <Compile Include="Externals\IniFiles\IniFileWriter.cs" />
+    <Compile Include="Externals\IniFiles\IniFileElement.cs" />
+    <Compile Include="Externals\IniFiles\IniFileEx.cs" />
+    <Compile Include="Externals\RusDeclension.cs" />
     <Compile Include="GKCommon\BaseObject.cs" />
     <Compile Include="GKCommon\CalendarConverter.cs" />
     <Compile Include="GKCommon\CalendarData.cs" />
+    <Compile Include="GKCommon\Controls\BBTextParser.cs" />
+    <Compile Include="GKCommon\Controls\GKListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GKCommon\Controls\GKScrollableControl.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -98,10 +112,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="GKCommon\Controls\LogChart.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="GKCommon\Controls\ReflectionHelper.cs" />
-    <Compile Include="GKCommon\Controls\SlideList.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="GKCommon\Controls\WizardPages.cs">
@@ -118,10 +128,6 @@
     <Compile Include="GKCommon\Controls\ImageView.Designer.cs">
       <DependentUpon>ImageView.cs</DependentUpon>
     </Compile>
-    <Compile Include="Externals\IniFiles\IniFileElement.cs" />
-    <Compile Include="Externals\IniFiles\IniFiles.cs" />
-    <Compile Include="Externals\CSV\CSVReader.cs" />
-    <Compile Include="Externals\CSV\StringConverter.cs" />
     <Compile Include="Externals\ListTimSort.cs" />
     <Compile Include="Externals\ZipStorer.cs" />
     <Compile Include="GEDCOM\EGEDCOMException.cs" />
@@ -153,7 +159,6 @@
     <Compile Include="GEDCOM\GEDCOMDateStatus.cs" />
     <Compile Include="GEDCOM\GEDCOMDateValue.cs" />
     <Compile Include="GEDCOM\GEDCOMEvent.cs" />
-    <Compile Include="GEDCOM\GEDCOMEventDetail.cs" />
     <Compile Include="GEDCOM\GEDCOMFamilyEvent.cs" />
     <Compile Include="GEDCOM\GEDCOMFamilyRecord.cs" />
     <Compile Include="GEDCOM\GEDCOMFileReference.cs" />
@@ -164,6 +169,7 @@
     <Compile Include="GEDCOM\GEDCOMIndividualEvent.cs" />
     <Compile Include="GEDCOM\GEDCOMIndividualOrdinance.cs" />
     <Compile Include="GEDCOM\GEDCOMIndividualRecord.cs" />
+    <Compile Include="GEDCOM\GEDCOMLanguage.cs" />
     <Compile Include="GEDCOM\GEDCOMLocationRecord.cs" />
     <Compile Include="GEDCOM\GEDCOMMap.cs" />
     <Compile Include="GEDCOM\GEDCOMMultimediaLink.cs" />
@@ -193,16 +199,15 @@
     <Compile Include="GEDCOM\GEDCOMUserReference.cs" />
     <Compile Include="GEDCOM\MatchParams.cs" />
     <Compile Include="GEDCOM\XRefReplacer.cs" />
+    <Compile Include="GEDCOM\Extensions\GEDCOMCutoutPosition.cs" />
+    <Compile Include="GEDCOM\GEDCOMLanguageID.cs" />
     <Compile Include="Externals\MapiMailMessage.cs" />
-    <Compile Include="GKCommon\ConvHelper.cs" />
-    <Compile Include="GKCommon\CRC32.cs" />
     <Compile Include="GKCommon\EnumSet.cs" />
     <Compile Include="GKCommon\ExpCalculator.cs" />
     <Compile Include="GKCommon\ExtList.cs" />
     <Compile Include="GKCommon\ExtRect.cs" />
-    <Compile Include="GKCommon\FileHelper.cs" />
-    <Compile Include="GKCommon\GfxHelper.cs" />
     <Compile Include="GKCommon\GKResourceManager.cs" />
+    <Compile Include="GKCommon\ImportUtils.cs" />
     <Compile Include="GKCommon\IndistinctMatching.cs" />
     <Compile Include="GKCommon\IniFile.cs" />
     <Compile Include="GKCommon\Logger.cs" />
@@ -215,14 +220,14 @@
     <Compile Include="GKCommon\SmartGraph\IGraph.cs" />
     <Compile Include="GKCommon\SmartGraph\IVertex.cs" />
     <Compile Include="GKCommon\SmartGraph\Vertex.cs" />
-    <Compile Include="GKCommon\SortHelper.cs" />
     <Compile Include="GKCommon\StringList.cs" />
     <Compile Include="GKCommon\StringTokenizer.cs" />
-    <Compile Include="GKCommon\SysInfo.cs" />
+    <Compile Include="GKCommon\SysUtils.cs" />
     <Compile Include="GKCommon\Tween.cs" />
     <Compile Include="GKCommon\UDN.cs" />
     <Compile Include="GKCommon\UIHelper.cs" />
     <Compile Include="GKCommon\ValuesCollection.cs" />
+    <Compile Include="GKCommon\YamlHelper.cs" />
     <Compile Include="GKCore\GKConsts.cs" />
     <Compile Include="GKCore\Interfaces\IBaseContext.cs" />
     <Compile Include="GKCore\Interfaces\IBaseEditor.cs" />
@@ -240,9 +245,11 @@
     <Compile Include="GKCore\Interfaces\IOptions.cs" />
     <Compile Include="GKCore\Interfaces\IOptionsControl.cs" />
     <Compile Include="GKCore\Interfaces\IPlugin.cs" />
+    <Compile Include="GKCore\Interfaces\IPrintable.cs" />
     <Compile Include="GKCore\Interfaces\IProgressController.cs" />
     <Compile Include="GKCore\Interfaces\ISearchStrategy.cs" />
     <Compile Include="GKCore\Interfaces\ISubscriber.cs" />
+    <Compile Include="GKCore\Interfaces\IUndoManager.cs" />
     <Compile Include="GKCore\Interfaces\IWidget.cs" />
     <Compile Include="GKCore\Interfaces\IWorkWindow.cs" />
     <Compile Include="GKCore\Types\DateFormat.cs" />
@@ -271,9 +278,6 @@
     <EmbeddedResource Include="GKCommon\Controls\ExtResources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>ExtResources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <EmbeddedResource Include="GKCommon\Controls\SlideList.resx">
-      <DependentUpon>SlideList.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup />

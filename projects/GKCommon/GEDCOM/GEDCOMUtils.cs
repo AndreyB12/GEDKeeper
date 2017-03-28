@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,10 +20,68 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Text;
 
 namespace GKCommon.GEDCOM
 {
+    public class GEDCOMEnumHelper<T> where T : struct, IComparable, IFormattable, IConvertible
+    {
+        private readonly string[] fStrValues;
+        private readonly Dictionary<string, int> fValues;
+        private readonly T fDefaultValue;
+        private readonly bool fCaseSensitive;
+
+        public GEDCOMEnumHelper(string[] strValues, T defaultValue, bool caseSensitive = false)
+        {
+            Type enumType = typeof(T);
+            if (!enumType.IsEnum)
+                throw new ArgumentException(string.Format("{0} is not of type Enum", enumType.Name));
+
+            T[] enums = (T[]) Enum.GetValues(enumType);
+
+            if (enums.Length != strValues.Length) {
+                throw new ArgumentException("Arguments are not compatible");
+            }
+
+            fStrValues = strValues;
+            fDefaultValue = defaultValue;
+            fCaseSensitive = caseSensitive;
+
+            fValues = new Dictionary<string, int>(enums.Length);
+            for (int i = 0; i < enums.Length; i++)
+            {
+                fValues.Add(strValues[i], i);
+            }
+        }
+
+        public string GetStrValue(T enumVal)
+        {
+            int idx = (int)((IConvertible)enumVal);
+
+            if (idx < 0 || idx >= fStrValues.Length) {
+                return string.Empty;
+            } else {
+                return fStrValues[idx];
+            }
+        }
+
+        public T GetEnumValue(string key)
+        {
+            if (!fCaseSensitive) {
+                key = key.Trim().ToLower(CultureInfo.InvariantCulture);
+            }
+
+            int result;
+            if (fValues.TryGetValue(key, out result)) {
+                return (T)((IConvertible)result);
+            } else {
+                return fDefaultValue;
+            }
+        }
+    }
+
     /// <summary>
     /// 
     /// </summary>
@@ -39,9 +97,9 @@ namespace GKCommon.GEDCOM
 
             public TagProperties(string name, bool emptySkip, bool extend)
             {
-                this.Name = name;
-                this.EmptySkip = emptySkip;
-                this.GKExtend = extend;
+                Name = name;
+                EmptySkip = emptySkip;
+                GKExtend = extend;
             }
         }
 
@@ -69,21 +127,39 @@ namespace GKCommon.GEDCOM
             TAGS_BASE.Add("TIME", new TagProperties("TIME", true, false));
             TAGS_BASE.Add("TYPE", new TagProperties("TYPE", true, false));
             TAGS_BASE.Add("SUBM", new TagProperties("SUBM", true, false));
+            TAGS_BASE.Add("VERS", new TagProperties("VERS", true, false));
+            TAGS_BASE.Add("LANG", new TagProperties("LANG", true, false));
+
             TAGS_BASE.Add("NPFX", new TagProperties("NPFX", true, false));
             TAGS_BASE.Add("GIVN", new TagProperties("GIVN", true, false));
             TAGS_BASE.Add("NICK", new TagProperties("NICK", true, false));
             TAGS_BASE.Add("SPFX", new TagProperties("SPFX", true, false));
             TAGS_BASE.Add("SURN", new TagProperties("SURN", true, false));
             TAGS_BASE.Add("NSFX", new TagProperties("NSFX", true, false));
-            TAGS_BASE.Add("_LOC", new TagProperties("_LOC", true,  true));
 
-            //new TagProperties("HUSB", true, false));
-            //new TagProperties("WIFE", true, false));
+            TAGS_BASE.Add("_PATN", new TagProperties("_PATN", true, true));
+            TAGS_BASE.Add("_MARN", new TagProperties("_MARN", true, true));
+            TAGS_BASE.Add("_RELN", new TagProperties("_RELN", true, true));
+            TAGS_BASE.Add("_CENN", new TagProperties("_CENN", true, true));
+
+            TAGS_BASE.Add("_LOC", new TagProperties("_LOC", true,  true));
+            TAGS_BASE.Add("_POSITION", new TagProperties("_POSITION", true,  true));
+            TAGS_BASE.Add("ALIA", new TagProperties("ALIA", true, false));
+
+            // need for compatibility with Agelong Tree (ALTREE)
+            //TAGS_BASE.Add("HUSB", new TagProperties("HUSB", true, false));
+            //TAGS_BASE.Add("WIFE", new TagProperties("WIFE", true, false));
+
+            TAGS_BASE.Add("_BGRO", new TagProperties("_BGRO", true,  true));
+            TAGS_BASE.Add("_HAIR", new TagProperties("_HAIR", true,  true));
+            TAGS_BASE.Add("_EYES", new TagProperties("_EYES", true,  true));
+            TAGS_BASE.Add("_MDNA", new TagProperties("_MDNA", true,  true));
+            TAGS_BASE.Add("_YDNA", new TagProperties("_YDNA", true,  true));
         }
 
         public static TagProperties GetTagProps(string tagName)
         {
-            TagProperties result = null;
+            TagProperties result;
             TAGS_BASE.TryGetValue(tagName, out result);
             return result;
         }
@@ -512,75 +588,107 @@ namespace GKCommon.GEDCOM
             if (string.IsNullOrEmpty(str)) return GEDCOMMultimediaFormat.mfNone;
 
             GEDCOMMultimediaFormat result;
-            str = str.Trim().ToUpperInvariant();
+            str = str.Trim().ToLowerInvariant();
             
-            if (str == "BMP")
+            if (str == "bmp")
             {
                 result = GEDCOMMultimediaFormat.mfBMP;
             }
-            else if (str == "GIF")
+            else if (str == "gif")
             {
                 result = GEDCOMMultimediaFormat.mfGIF;
             }
-            else if (str == "JPG")
+            else if (str == "jpg" || str == "jpeg")
             {
                 result = GEDCOMMultimediaFormat.mfJPG;
             }
-            else if (str == "OLE")
+            else if (str == "ole")
             {
                 result = GEDCOMMultimediaFormat.mfOLE;
             }
-            else if (str == "PCX")
+            else if (str == "pcx")
             {
                 result = GEDCOMMultimediaFormat.mfPCX;
             }
-            else if (str == "TIF")
+            else if (str == "tif" || str == "tiff")
             {
                 result = GEDCOMMultimediaFormat.mfTIF;
             }
-            else if (str == "WAV")
+            else if (str == "wav")
             {
                 result = GEDCOMMultimediaFormat.mfWAV;
             }
-            else if (str == "TXT")
+            else if (str == "txt")
             {
                 result = GEDCOMMultimediaFormat.mfTXT;
             }
-            else if (str == "RTF")
+            else if (str == "rtf")
             {
                 result = GEDCOMMultimediaFormat.mfRTF;
             }
-            else if (str == "AVI")
+            else if (str == "avi")
             {
                 result = GEDCOMMultimediaFormat.mfAVI;
             }
-            else if (str == "TGA")
+            else if (str == "tga")
             {
                 result = GEDCOMMultimediaFormat.mfTGA;
             }
-            else if (str == "PNG")
+            else if (str == "png")
             {
                 result = GEDCOMMultimediaFormat.mfPNG;
             }
-            else if (str == "MPG")
+            else if (str == "mpg" || str == "mpeg")
             {
                 result = GEDCOMMultimediaFormat.mfMPG;
             }
-            else if (str == "HTM")
+            else if (str == "htm" || str == "html")
             {
                 result = GEDCOMMultimediaFormat.mfHTM;
             }
-            else if (str == "RAW")
+            else if (str == "raw")
             {
                 result = GEDCOMMultimediaFormat.mfRAW;
             }
-            else if (str == "MP3")
+            else if (str == "mp3")
             {
                 result = GEDCOMMultimediaFormat.mfMP3;
             }
-            else if (str == "WMA")
+            else if (str == "wma")
             {
                 result = GEDCOMMultimediaFormat.mfWMA;
+            }
+            else if (str == "psd")
+            {
+                result = GEDCOMMultimediaFormat.mfPSD;
+            }
+            else if (str == "pdf")
+            {
+                result = GEDCOMMultimediaFormat.mfPDF;
+            }
+            else if (str == "mp4")
+            {
+                result = GEDCOMMultimediaFormat.mfMP4;
+            }
+            else if (str == "ogv")
+            {
+                result = GEDCOMMultimediaFormat.mfOGV;
+            }
+            else if (str == "mka")
+            {
+                result = GEDCOMMultimediaFormat.mfMKA;
+            }
+            else if (str == "wmv")
+            {
+                result = GEDCOMMultimediaFormat.mfWMV;
+            }
+            else if (str == "mkv")
+            {
+                result = GEDCOMMultimediaFormat.mfMKV;
+            }
+            else if (str == "mov")
+            {
+                result = GEDCOMMultimediaFormat.mfMOV;
             }
             else
             {
@@ -644,6 +752,30 @@ namespace GKCommon.GEDCOM
                 case GEDCOMMultimediaFormat.mfWMA:
                     s = "wma";
                     break;
+                case GEDCOMMultimediaFormat.mfPSD:
+                    s = "psd";
+                    break;
+                case GEDCOMMultimediaFormat.mfPDF:
+                    s = "pdf";
+                    break;
+                case GEDCOMMultimediaFormat.mfMP4:
+                    s = "mp4";
+                    break;
+                case GEDCOMMultimediaFormat.mfOGV:
+                    s = "ogv";
+                    break;
+                case GEDCOMMultimediaFormat.mfMKA:
+                    s = "mka";
+                    break;
+                case GEDCOMMultimediaFormat.mfWMV:
+                    s = "wmv";
+                    break;
+                case GEDCOMMultimediaFormat.mfMKV:
+                    s = "mkv";
+                    break;
+                case GEDCOMMultimediaFormat.mfMOV:
+                    s = "mov";
+                    break;
                 default:
                     s = "";
                     break;
@@ -653,67 +785,64 @@ namespace GKCommon.GEDCOM
 
         public static GEDCOMMediaType GetMediaTypeVal(string str)
         {
-            if (string.IsNullOrEmpty(str)) return GEDCOMMediaType.mtNone;
+            GEDCOMMediaType result = GEDCOMMediaType.mtUnknown;
+            if (string.IsNullOrEmpty(str)) return result;
 
-            GEDCOMMediaType result;
-            str = str.Trim().ToLowerInvariant();
-            
-            if (str == "audio")
+            str = str.Trim().ToLower(CultureInfo.InvariantCulture);
+
+            if (string.Equals(str, "audio"))
             {
                 result = GEDCOMMediaType.mtAudio;
             }
-            else if (str == "book")
+            else if (string.Equals(str, "book"))
             {
                 result = GEDCOMMediaType.mtBook;
             }
-            else if (str == "card")
+            else if (string.Equals(str, "card"))
             {
                 result = GEDCOMMediaType.mtCard;
             }
-            else if (str == "electronic")
+            else if (string.Equals(str, "electronic"))
             {
                 result = GEDCOMMediaType.mtElectronic;
             }
-            else if (str == "fiche")
+            else if (string.Equals(str, "fiche"))
             {
                 result = GEDCOMMediaType.mtFiche;
             }
-            else if (str == "film")
+            else if (string.Equals(str, "film"))
             {
                 result = GEDCOMMediaType.mtFilm;
             }
-            else if (str == "magazine")
+            else if (string.Equals(str, "magazine"))
             {
                 result = GEDCOMMediaType.mtMagazine;
             }
-            else if (str == "manuscript")
+            else if (string.Equals(str, "manuscript"))
             {
                 result = GEDCOMMediaType.mtManuscript;
             }
-            else if (str == "map")
+            else if (string.Equals(str, "map"))
             {
                 result = GEDCOMMediaType.mtMap;
             }
-            else if (str == "newspaper")
+            else if (string.Equals(str, "newspaper"))
             {
                 result = GEDCOMMediaType.mtNewspaper;
             }
-            else if (str == "photo")
+            else if (string.Equals(str, "photo"))
             {
                 result = GEDCOMMediaType.mtPhoto;
             }
-            else if (str == "tombstone")
+            else if (string.Equals(str, "tombstone"))
             {
                 result = GEDCOMMediaType.mtTombstone;
             }
-            else if (str == "video")
+            else if (string.Equals(str, "video"))
             {
                 result = GEDCOMMediaType.mtVideo;
             }
-            else
-            {
-                result = GEDCOMMediaType.mtUnknown;
-            }
+
             return result;
         }
 
@@ -1404,10 +1533,41 @@ namespace GKCommon.GEDCOM
 
         #region Other
 
-        public static string StrToUtf8(string str)
+        public static StreamReader OpenStreamReader(Stream src, Encoding defaultEncoding)
         {
-            byte[] src = Encoding.GetEncoding(1251).GetBytes(str);
-            return Encoding.UTF8.GetString(src);
+            Encoding encodingSource = defaultEncoding;
+            bool detectEncoding = false;
+
+            if (src.CanSeek)
+            {
+                byte[] bPreamble = new byte[4];
+                int iReaded = src.Read(bPreamble, 0, 4);
+
+                if (iReaded >= 3 && bPreamble[0] == 0xEF && bPreamble[1] == 0xBB && bPreamble[2] == 0xBF) // utf-8
+                    encodingSource = Encoding.UTF8;
+                else if (iReaded == 4 && bPreamble[0] == 0x00 && bPreamble[1] == 0x00 && bPreamble[2] == 0xFE && bPreamble[3] == 0xFF) // utf-32 EB
+                {
+                    encodingSource = Encoding.GetEncoding("utf-32"); // is a EL codepage, but the StreamReader should switch to EB
+                    detectEncoding = true;
+                }
+                else if (iReaded == 4 && bPreamble[0] == 0xFF && bPreamble[1] == 0xFE && bPreamble[2] == 0x00 && bPreamble[3] == 0x00) // utf-32 EL
+                    encodingSource = Encoding.GetEncoding("utf-32");
+                else if (iReaded >= 2 && bPreamble[0] == 0xFE && bPreamble[1] == 0xFF) // utf-16 EB
+                    encodingSource = Encoding.BigEndianUnicode;
+                else if (iReaded >= 2 && bPreamble[0] == 0xFF && bPreamble[1] == 0xFE) // utf-16 EL
+                    encodingSource = Encoding.Unicode;
+
+                src.Seek(-iReaded, SeekOrigin.Current);
+            }
+            else
+                detectEncoding = true;
+
+            return new StreamReader(src, encodingSource, detectEncoding);
+        }
+
+        public static bool IsUnicodeEncoding(Encoding encoding)
+        {
+            return (encoding == Encoding.Unicode || encoding == Encoding.UTF7 || encoding == Encoding.UTF8 || encoding == Encoding.UTF32);
         }
 
         /// <summary>
@@ -1448,19 +1608,11 @@ namespace GKCommon.GEDCOM
             }
             catch (Exception ex)
             {
-                Logger.LogWrite("GEDCOMTree.CorrectLine(): Line " + lineNum.ToString() + " failed correct: " + ex.Message);
+                Logger.LogWrite("GKUtils.FixFTBLine(): Line " + lineNum.ToString() + " failed correct: " + ex.Message);
             }
         }
 
-        public static string NormalizeName(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return "";
-
-            StringBuilder stb = new StringBuilder(s.Trim().ToLowerInvariant());
-            stb[0] = Char.ToUpperInvariant(stb[0]);
-            return stb.ToString();
-        }
-
+        // FIXME: there is the bug - use GEDCOMMonthArray without depend to Calendar (hebrew and islamic month's names)
         public static string StrToGEDCOMDate(string strDate, bool aException)
         {
             if (string.IsNullOrEmpty(strDate)) return "";
@@ -1485,7 +1637,7 @@ namespace GKCommon.GEDCOM
             string py = dtParts[2].Trim();
 
             if (pd != "") result = result + pd + " ";
-            if (pm != "") result = result + GEDCOMCustomDate.GEDCOMMonthArray[ConvHelper.ParseInt(pm, 1) - 1] + " ";
+            if (pm != "") result = result + GEDCOMCustomDate.GEDCOMMonthArray[SysUtils.ParseInt(pm, 1) - 1] + " ";
             if (py != "") result += py;
 
             return result;
@@ -1520,6 +1672,69 @@ namespace GKCommon.GEDCOM
             return result;
         }
 
+        public static string EncodeUID(byte[] binaryKey)
+        {
+            StringBuilder result = new StringBuilder(36);
+            byte checkA = 0;
+            byte checkB = 0;
+
+            int num = binaryKey.Length;
+            for (int i = 0; i < num; i++)
+            {
+                byte val = binaryKey[i];
+                checkA = unchecked((byte)(checkA + (uint)val));
+                checkB = unchecked((byte)(checkB + (uint)checkA));
+                result.Append(val.ToString("X2"));
+            }
+
+            result.Append(checkA.ToString("X2"));
+            result.Append(checkB.ToString("X2"));
+
+            return result.ToString();
+        }
+
+        public static string GetRectUID(int x1, int y1, int x2, int y2)
+        {
+            byte[] bx1 = BitConverter.GetBytes((ushort)x1);
+            byte[] by1 = BitConverter.GetBytes((ushort)y1);
+            byte[] bx2 = BitConverter.GetBytes((ushort)x2);
+            byte[] by2 = BitConverter.GetBytes((ushort)y2);
+
+            byte[] buffer = new byte[8];
+            Buffer.BlockCopy(bx1, 0, buffer, 0, 2);
+            Buffer.BlockCopy(by1, 0, buffer, 2, 2);
+            Buffer.BlockCopy(bx2, 0, buffer, 4, 2);
+            Buffer.BlockCopy(by2, 0, buffer, 6, 2);
+
+            return EncodeUID(buffer);
+        }
+
+        public static string GetMultimediaLinkUID(GEDCOMMultimediaLink mmLink)
+        {
+            string result = null;
+            try
+            {
+                if (mmLink != null && mmLink.Value != null)
+                {
+                    ExtRect cutoutArea;
+                    if (mmLink.IsPrimaryCutout) {
+                        cutoutArea = mmLink.CutoutPosition.Value;
+                    } else {
+                        cutoutArea = ExtRect.CreateEmpty();
+                    }
+
+                    GEDCOMMultimediaRecord mmRec = (GEDCOMMultimediaRecord)mmLink.Value;
+                    result = mmRec.UID + "-" + GEDCOMUtils.GetRectUID(cutoutArea.Left, cutoutArea.Top, cutoutArea.Right, cutoutArea.Bottom);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWrite("GEDCOMUtils.GetMultimediaLinkUID(): " + ex.Message);
+                result = null;
+            }
+            return result;
+        }
+
         #endregion
 
         #region RelativeYear utils
@@ -1548,7 +1763,7 @@ namespace GKCommon.GEDCOM
         /// <returns></returns>
         public static int GetRelativeYear(GEDCOMCustomEvent evt)
         {
-            return (evt == null) ? 0 : GetRelativeYear(evt.Detail.Date);
+            return (evt == null) ? 0 : GetRelativeYear(evt.Date);
         }
 
         public static int GetRelativeYear(GEDCOMDateValue dateVal)
@@ -1586,7 +1801,7 @@ namespace GKCommon.GEDCOM
 
         public static UDN GetUDN(GEDCOMCustomEvent evt)
         {
-            return (evt == null) ? UDN.CreateEmpty() : evt.Detail.Date.GetUDN();
+            return (evt == null) ? UDN.CreateEmpty() : evt.Date.GetUDN();
         }
 
         public static UDN GetUDN(GEDCOMRecordWithEvents evsRec, string evSign)
@@ -1627,10 +1842,10 @@ namespace GKCommon.GEDCOM
         {
             if (famRec == null) return;
 
-            int num = famRec.Childrens.Count;
+            int num = famRec.Children.Count;
             for (int i = 0; i < num; i++)
             {
-                GEDCOMIndividualRecord child = (GEDCOMIndividualRecord)famRec.Childrens[i].Value;
+                GEDCOMIndividualRecord child = (GEDCOMIndividualRecord)famRec.Children[i].Value;
                 child.DeleteChildToFamilyLink(famRec);
             }
 

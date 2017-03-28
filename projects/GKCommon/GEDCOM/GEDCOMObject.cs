@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -23,7 +23,7 @@ using System;
 namespace GKCommon.GEDCOM
 {
     /// <summary>
-    /// 
+    /// Base class for all GEDCOM objects like tags, and tree and xref replacer.
     /// </summary>
     public class GEDCOMObject : IDisposable
     {
@@ -54,10 +54,10 @@ namespace GKCommon.GEDCOM
 
         public void Dispose()
         {
-            if (!this.fDisposed)
+            if (!fDisposed)
             {
-                this.Dispose(true /*called by user directly*/);
-                this.fDisposed = true;
+                Dispose(true /*called by user directly*/);
+                fDisposed = true;
             }
 
             GC.SuppressFinalize(this);

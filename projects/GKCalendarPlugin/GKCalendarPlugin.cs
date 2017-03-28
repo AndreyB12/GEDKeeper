@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -26,11 +26,11 @@ using GKCommon;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKCalendarPlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 Calendar plugin")]
+[assembly: AssemblyDescription("GEDKeeper Calendar plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2014, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2014 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -42,45 +42,59 @@ namespace GKCalendarPlugin
 {
     public enum PLS
     {
-        /* 033 */ LSID_MICalendar,
-        /* 140 */ LSID_Date,
-        /* 157 */ LSID_Cal_Gregorian,
-        /* 158 */ LSID_Cal_Julian,
-        /* 159 */ LSID_Cal_Hebrew,
-        /* 160 */ LSID_Cal_Islamic,
-        /* 161 */ LSID_Cal_Persian,
-        /* 162 */ LSID_Cal_Indian,
-        /* 163 */ LSID_Cal_Bahai,
+        LSID_MICalendar,
+        LSID_Date,
+        LSID_Cal_Gregorian,
+        LSID_Cal_Julian,
+        LSID_Cal_Hebrew,
+        LSID_Cal_Islamic,
+        LSID_Cal_Persian,
+        LSID_Cal_Indian,
+        LSID_Cal_Bahai,
+
+        LSID_BahaiMonths,
+        LSID_BahaiWeekdays,
+        LSID_ClassicMonths,
+        LSID_ClassicWeekdays,
+        LSID_HebrewMonths,
+        LSID_HebrewWeekdays,
+        LSID_IndianCivilMonths,
+        LSID_IndianCivilWeekdays,
+        LSID_IslamicMonths,
+        LSID_IslamicWeekdays,
+        LSID_PersianMonths,
+        LSID_PersianWeekdays,
+        LSID_BahaiCycles
     }
-    
+
     public sealed class Plugin : BaseObject, IPlugin, IWidget
     {
         private string fDisplayName = "GKCalendarPlugin";
         private IHost fHost;
         private ILangMan fLangMan;
 
-        public string DisplayName { get { return this.fDisplayName; } }
+        public string DisplayName { get { return fDisplayName; } }
         public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
 
-        private CalendarWidget frm;
-        
+        private CalendarWidget fForm;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (frm != null) frm.Dispose();
+                if (fForm != null) fForm.Dispose();
             }
             base.Dispose(disposing);
         }
 
         public void Execute()
         {
-            if (!this.fHost.IsWidgetActive(this)) {
-                frm = new CalendarWidget(this);
-                frm.Show();
+            if (!fHost.IsWidgetActive(this)) {
+                fForm = new CalendarWidget(this);
+                fForm.Show();
             } else {
-                frm.Close();
+                fForm.Close();
             }
         }
 
@@ -92,22 +106,36 @@ namespace GKCalendarPlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
-                this.fDisplayName = this.fLangMan.LS(PLS.LSID_MICalendar);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(PLS.LSID_MICalendar);
+
+                CalendarData.BahaiMonths = CalendarData.InitNames(fLangMan.LS(PLS.LSID_BahaiMonths));
+                CalendarData.BahaiWeekdays = CalendarData.InitNames(fLangMan.LS(PLS.LSID_BahaiWeekdays));
+                CalendarData.ClassicMonths = CalendarData.InitNames(fLangMan.LS(PLS.LSID_ClassicMonths));
+                CalendarData.ClassicWeekdays = CalendarData.InitNames(fLangMan.LS(PLS.LSID_ClassicWeekdays));
+                CalendarData.HebrewMonths = CalendarData.InitNames(fLangMan.LS(PLS.LSID_HebrewMonths));
+                CalendarData.HebrewWeekdays = CalendarData.InitNames(fLangMan.LS(PLS.LSID_HebrewWeekdays));
+                CalendarData.IndianCivilMonths = CalendarData.InitNames(fLangMan.LS(PLS.LSID_IndianCivilMonths));
+                CalendarData.IndianCivilWeekdays = CalendarData.InitNames(fLangMan.LS(PLS.LSID_IndianCivilWeekdays));
+                CalendarData.IslamicMonths = CalendarData.InitNames(fLangMan.LS(PLS.LSID_IslamicMonths));
+                CalendarData.IslamicWeekdays = CalendarData.InitNames(fLangMan.LS(PLS.LSID_IslamicWeekdays));
+                CalendarData.PersianMonths = CalendarData.InitNames(fLangMan.LS(PLS.LSID_PersianMonths));
+                CalendarData.PersianWeekdays = CalendarData.InitNames(fLangMan.LS(PLS.LSID_PersianWeekdays));
+
+                if (fForm != null) fForm.SetLang();
             }
             catch (Exception ex)
             {
                 fHost.LogWrite("GKCalendarPlugin.OnLanguageChange(): " + ex.Message);
             }
         }
-        
+
         public bool Startup(IHost host)
         {
             bool result = true;
             try
             {
-                this.fHost = host;
-                // Implement any startup code here
+                fHost = host;
             }
             catch (Exception ex)
             {
@@ -122,7 +150,6 @@ namespace GKCalendarPlugin
             bool result = true;
             try
             {
-                // Implement any shutdown code here
             }
             catch (Exception ex)
             {
@@ -135,8 +162,9 @@ namespace GKCalendarPlugin
         #region IWidget common
 
         void IWidget.WidgetInit(IHost host) {}
-        void IWidget.BaseChanged(IBaseWindow aBase) {}
-        void IWidget.BaseClosed(IBaseWindow aBase) {}
+        void IWidget.BaseChanged(IBaseWindow baseWin) {}
+        void IWidget.BaseClosed(IBaseWindow baseWin) {}
+        void IWidget.BaseRenamed(IBaseWindow baseWin, string oldName, string newName) {}
         void IWidget.WidgetEnable() {}
 
         #endregion

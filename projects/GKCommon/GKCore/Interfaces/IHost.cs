@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -30,11 +30,13 @@ namespace GKCore.Interfaces
         IBaseWindow GetCurrentFile(bool extMode = false);
         IWorkWindow GetWorkWindow();
 
+        string GetUserFilesPath(string filePath);
         IBaseWindow CreateBase(string fileName);
         IBaseWindow FindBase(string fileName);
-        void BaseChanged(IBaseWindow aBase);
-        void BaseClosed(IBaseWindow aBase);
-        void NotifyRecord(IBaseWindow aBase, object record, RecordAction action);
+        void BaseChanged(IBaseWindow baseWin);
+        void BaseClosed(IBaseWindow baseWin);
+        void BaseRenamed(IBaseWindow baseWin, string oldName, string newName);
+        void NotifyRecord(IBaseWindow baseWin, object record, RecordAction action);
 
         string GetAppDataPath();
 
@@ -52,6 +54,7 @@ namespace GKCore.Interfaces
         void UpdateControls(bool forceDeactivate);
         void ShowHelpTopic(string topic);
         void EnableWindow(Form form, bool value);
+        void Restore();
 
         bool IsUnix();
         void ShowWarning(string msg);

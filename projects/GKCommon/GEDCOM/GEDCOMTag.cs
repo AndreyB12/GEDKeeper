@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -24,6 +24,12 @@ using System.IO;
 
 namespace GKCommon.GEDCOM
 {
+    /// <summary>
+    /// The main class of the entire storage infrastructure in the GEDCOM format.
+    /// The ancestor of all structural classes. Contains the main logic
+    /// for reading and writing the values of tags in the terminology and
+    /// according to the rules of GEDCOM.
+    /// </summary>
     public class GEDCOMTag : GEDCOMObject
     {
         #region Protected fields
@@ -39,41 +45,47 @@ namespace GKCommon.GEDCOM
         #endregion
         
         #region Public properties
-        
+
+        /// <summary>
+        /// The number of nested sub-tags.
+        /// </summary>
         public int Count
         {
-            get { return this.fTags.Count; }
+            get { return fTags.Count; }
         }
 
+        /// <summary>
+        /// Access to items of nested sub-tags.
+        /// </summary>
         public GEDCOMTag this[int index]
         {
-            get { return this.fTags[index]; }
+            get { return fTags[index]; }
         }
 
         public int Level
         {
-            get { return this.fLevel; }
+            get { return fLevel; }
         }
 
         public string Name
         {
-            get { return this.fName; }
+            get { return fName; }
         }
 
         public GEDCOMTree Owner
         {
-            get { return this.fOwner; }
+            get { return fOwner; }
         }
 
         public GEDCOMObject Parent
         {
-            get { return this.fParent; }
+            get { return fParent; }
         }
 
         public string StringValue
         {
-            get { return this.GetStringValue(); }
-            set { this.SetStringValue(value); }
+            get { return GetStringValue(); }
+            set { SetStringValue(value); }
         }
 
         #endregion
@@ -82,26 +94,27 @@ namespace GKCommon.GEDCOM
         
         protected virtual void CreateObj(GEDCOMTree owner, GEDCOMObject parent)
         {
-            this.fOwner = owner;
-            this.fParent = parent;
-            this.fTags = new GEDCOMList<GEDCOMTag>(this);
-            this.fStringValue = "";
+            fOwner = owner;
+            fParent = parent;
+            fTags = new GEDCOMList<GEDCOMTag>(this);
+            fStringValue = "";
 
-            if (parent is GEDCOMTag) {
-                this.fLevel = (parent as GEDCOMTag).Level + 1;
+            GEDCOMTag parentTag = parent as GEDCOMTag;
+            if (parentTag != null) {
+                fLevel = parentTag.Level + 1;
             } else {
-                this.fLevel = 0;
+                fLevel = 0;
             }
         }
 
         public GEDCOMTag(GEDCOMTree owner, GEDCOMObject parent, string tagName, string tagValue)
         {
-            this.CreateObj(owner, parent);
+            CreateObj(owner, parent);
 
             if (tagName != "" || tagValue != "")
             {
-                this.SetName(tagName);
-                this.SetStringValue(tagValue);
+                SetName(tagName);
+                SetStringValue(tagValue);
             }
         }
 
@@ -109,9 +122,9 @@ namespace GKCommon.GEDCOM
         {
             if (disposing)
             {
-                if (this.fTags != null) {
-                    this.fTags.Dispose();
-                    this.fTags = null;
+                if (fTags != null) {
+                    fTags.Dispose();
+                    fTags = null;
                 }
             }
             base.Dispose(disposing);
@@ -128,65 +141,76 @@ namespace GKCommon.GEDCOM
 
         protected GEDCOMRecord FindRecord(string xref)
         {
-            return ((this.fOwner == null) ? null : this.fOwner.XRefIndex_Find(xref));
+            return ((fOwner == null) ? null : fOwner.XRefIndex_Find(xref));
         }
 
         protected GEDCOMTag InsertTag(GEDCOMTag tag)
         {
-            this.fTags.Add(tag);
+            fTags.Add(tag);
             return tag;
         }
 
         public bool IsEmptySkip()
         {
-            GEDCOMUtils.TagProperties props = GEDCOMUtils.GetTagProps(this.fName);
+            GEDCOMUtils.TagProperties props = GEDCOMUtils.GetTagProps(fName);
             return (props != null && props.EmptySkip);
         }
 
-        public void SetLevel(int value)
+        internal void SetLevel(int value)
         {
-            this.fLevel = value;
+            fLevel = value;
         }
 
         public void SetName(string value)
         {
-            this.fName = value;
+            fName = value;
         }
 
+        /// <summary>
+        /// Adding nested sub-tags.
+        /// </summary>
+        /// <param name="tagName">A name of sub-tag.</param>
+        /// <param name="tagValue">A string value of sub-tag.</param>
+        /// <param name="tagConstructor">The default constructor of sub-tag.</param>
+        /// <returns></returns>
         public virtual GEDCOMTag AddTag(string tagName, string tagValue, TagConstructor tagConstructor)
         {
             GEDCOMTag tag = null;
             try
             {
                 if (tagConstructor != null) {
-                    tag = tagConstructor(this.fOwner, this, tagName, tagValue);
+                    tag = tagConstructor(fOwner, this, tagName, tagValue);
                 } else {
-                    tag = GEDCOMFactory.GetInstance().CreateTag(this.fOwner, this, tagName, tagValue);
+                    tag = GEDCOMFactory.GetInstance().CreateTag(fOwner, this, tagName, tagValue);
                     if (tag == null) {
-                        tag = new GEDCOMTag(this.fOwner, this, tagName, tagValue);
+                        tag = new GEDCOMTag(fOwner, this, tagName, tagValue);
                     }
                 }
 
-                this.InsertTag(tag);
+                InsertTag(tag);
             }
             catch (Exception ex)
             {
-                Logger.LogWrite("GEDCOMTag.InternalCreateTag(): " + ex.Message);
+                Logger.LogWrite("GEDCOMTag.AddTag(): " + ex.Message);
             }
             return tag;
         }
 
+        /// <summary>
+        /// Copying the sub-tags from the source to the current tag.
+        /// </summary>
+        /// <param name="source">A source tag.</param>
         public virtual void Assign(GEDCOMTag source/*, string[] skipList = null*/)
         {
             if (source == null) return;
             
-            this.SetName(source.Name);
-            this.StringValue = source.StringValue;
+            SetName(source.Name);
+            StringValue = source.StringValue;
 
             foreach (GEDCOMTag sourceTag in source.fTags)
             {
-                GEDCOMTag copy = this.CreateCopy(sourceTag);
-                this.InsertTag(copy);
+                GEDCOMTag copy = CreateCopy(sourceTag);
+                InsertTag(copy);
             }
         }
 
@@ -194,38 +218,38 @@ namespace GKCommon.GEDCOM
         {
             foreach (GEDCOMTag sourceTag in srcList)
             {
-                GEDCOMTag copy = this.CreateCopy(sourceTag);
+                GEDCOMTag copy = CreateCopy(sourceTag);
                 destList.Add(copy);
             }
         }
 
-        protected GEDCOMTag CreateCopy(GEDCOMTag sourceTag)
+        private GEDCOMTag CreateCopy(GEDCOMTag sourceTag)
         {
-            GEDCOMTag result = (GEDCOMTag)Activator.CreateInstance(sourceTag.GetType(), new object[] { this.Owner, this, "", "" });
+            GEDCOMTag result = (GEDCOMTag)Activator.CreateInstance(sourceTag.GetType(), new object[] { Owner, this, "", "" });
             result.Assign(sourceTag);
             return result;
         }
 
         public virtual void Clear()
         {
-            this.fTags.Clear();
-            this.fStringValue = "";
+            fTags.Clear();
+            fStringValue = "";
         }
 
         public void Delete(int index)
         {
-            this.fTags.DeleteAt(index);
+            fTags.DeleteAt(index);
         }
 
         public void DeleteTag(string tagName)
         {
-            GEDCOMTag tag = this.FindTag(tagName, 0);
+            GEDCOMTag tag = FindTag(tagName, 0);
             while (tag != null)
             {
-                int idx = this.fTags.IndexOf(tag);
-                this.fTags.DeleteAt(idx);
+                int idx = fTags.IndexOf(tag);
+                fTags.DeleteAt(idx);
 
-                tag = this.FindTag(tagName, idx);
+                tag = FindTag(tagName, idx);
             }
         }
 
@@ -270,10 +294,10 @@ namespace GKCommon.GEDCOM
 
         public GEDCOMTag TagClass(string tagName, TagConstructor tagConstructor)
         {
-            GEDCOMTag result = this.FindTag(tagName, 0);
+            GEDCOMTag result = FindTag(tagName, 0);
 
             if (result == null) {
-                result = this.AddTag(tagName, "", tagConstructor);
+                result = AddTag(tagName, "", tagConstructor);
             }
 
             return result;
@@ -281,57 +305,57 @@ namespace GKCommon.GEDCOM
 
         public int IndexOfTag(GEDCOMTag tag)
         {
-            return this.fTags.IndexOf(tag);
+            return fTags.IndexOf(tag);
         }
 
         public virtual bool IsEmpty()
         {
-            return ((this.fStringValue == "") && (this.fTags.Count == 0));
+            return (string.IsNullOrEmpty(fStringValue) && (fTags.Count == 0));
         }
-        
+
         public virtual float IsMatch(GEDCOMTag tag, MatchParams matchParams)
         {
             return 0.0f;
         }
-        
+
         #endregion
 
         #region Values management
 
         protected virtual string GetStringValue()
         {
-            return this.fStringValue;
+            return fStringValue;
         }
 
         protected virtual void SetStringValue(string strValue)
         {
-            this.ParseString(strValue);
+            ParseString(strValue);
         }
 
         public virtual string ParseString(string strValue)
         {
-            this.fStringValue = strValue;
+            fStringValue = strValue;
             return string.Empty;
         }
 
 
         public int GetTagIntegerValue(string tagName, int defValue)
         {
-            string str = this.GetTagStringValue(tagName);
-            int result = ((str == "") ? defValue : ConvHelper.ParseInt(str, defValue));
+            string str = GetTagStringValue(tagName);
+            int result = ((str == "") ? defValue : SysUtils.ParseInt(str, defValue));
             return result;
         }
 
         public void SetTagIntegerValue(string tagName, int value)
         {
-            this.SetTagStringValue(tagName, value.ToString());
+            SetTagStringValue(tagName, value.ToString());
         }
 
 
         public double GetTagFloatValue(string tagName, double defValue)
         {
-            string str = this.GetTagStringValue(tagName);
-            double result = ((str == "") ? defValue : ConvHelper.ParseFloat(str, defValue));
+            string str = GetTagStringValue(tagName);
+            double result = ((str == "") ? defValue : SysUtils.ParseFloat(str, defValue));
             return result;
         }
 
@@ -339,13 +363,13 @@ namespace GKCommon.GEDCOM
         {
             NumberFormatInfo nfi = new NumberFormatInfo();
             nfi.NumberDecimalSeparator = ".";
-            this.SetTagStringValue(tagName, value.ToString(nfi));
+            SetTagStringValue(tagName, value.ToString(nfi));
         }
 
 
         public string GetTagStringValue(string tagName)
         {
-            GEDCOMTag tag = this.FindTag(tagName, 0);
+            GEDCOMTag tag = FindTag(tagName, 0);
             string result = ((tag == null) ? "" : tag.StringValue);
             return result;
         }
@@ -354,7 +378,7 @@ namespace GKCommon.GEDCOM
         {
             string su = tagName;
 
-            GEDCOMTag P = this.FindTag(su, 0);
+            GEDCOMTag P = FindTag(su, 0);
 
             if (P != null)
             {
@@ -420,7 +444,11 @@ namespace GKCommon.GEDCOM
                     GEDCOMTag tag = strTag[i];
 
                     if (tag.Name == "CONC") {
-                        strings[strings.Count - 1] = strings[strings.Count - 1] + tag.StringValue;
+                        if (strings.Count > 0) {
+                            strings[strings.Count - 1] = strings[strings.Count - 1] + tag.StringValue;
+                        } else {
+                            strings.Add(tag.StringValue);
+                        }
                     } else {
                         if (tag.Name == "CONT") {
                             strings.Add(tag.StringValue);
@@ -512,29 +540,49 @@ namespace GKCommon.GEDCOM
             }
         }
 
+
+        public bool GetTagYNValue(string tagName)
+        {
+            GEDCOMTag tag = FindTag(tagName, 0);
+            return (tag != null) && (tag.StringValue == "Y");
+        }
+
+        public void SetTagYNValue(string tagName, bool value)
+        {
+            if (value) {
+                GEDCOMTag tag = FindTag(tagName, 0);
+                if (tag == null) {
+                    tag = AddTag(tagName, "", null);
+                }
+                tag.StringValue = "Y";
+            } else {
+                DeleteTag(tagName);
+            }
+        }
+
         #endregion
 
         #region Tree management
 
         public virtual void Pack()
         {
-            this.fTags.Pack();
+            fTags.Pack();
         }
 
         public virtual void ReplaceXRefs(XRefReplacer map)
         {
-            this.fTags.ReplaceXRefs(map);
+            fTags.ReplaceXRefs(map);
         }
 
         public virtual void ResetOwner(GEDCOMTree newOwner)
         {
-            this.fOwner = newOwner;
-            this.fTags.ResetOwner(newOwner);
+            fOwner = newOwner;
+            fTags.ResetOwner(newOwner);
         }
 
         public void ResetParent(GEDCOMObject parent)
         {
-            this.fParent = parent;
+            fParent = parent;
         }
 
         #endregion
@@ -543,64 +591,63 @@ namespace GKCommon.GEDCOM
 
         protected virtual void SaveTagsToStream(StreamWriter stream)
         {
-            if (this.Count > 0)
+            if (Count <= 0) return;
+
+            StringList savedTags = new StringList();
+            try
             {
-                StringList savedTags = new StringList();
-                try
+                savedTags.DuplicateSolve = DuplicateSolve.Ignore;
+                savedTags.Sorted = true;
+
+                int num = Count;
+                for (int i = 0; i < num; i++)
                 {
-                    savedTags.DuplicateSolve = DuplicateSolve.Ignore;
-                    savedTags.Sorted = true;
+                    savedTags.Add(this[i].Name);
+                }
 
-                    int num = this.Count;
-                    for (int i = 0; i < num; i++)
+                if (savedTags.IndexOf("CONC") >= 0 || savedTags.IndexOf("CONT") >= 0)
+                {
+                    int num2 = Count;
+                    for (int i = 0; i < num2; i++)
                     {
-                        savedTags.Add(this[i].Name);
-                    }
-
-                    if (savedTags.IndexOf("CONC") >= 0 || savedTags.IndexOf("CONT") >= 0)
-                    {
-                        int num2 = this.Count;
-                        for (int i = 0; i < num2; i++)
-                        {
-                            GEDCOMTag tmp = this[i];
-                            
-                            if (tmp.Name == "CONC" || tmp.Name == "CONT")
-                            {
-                                tmp.SaveToStream(stream);
-                            }
-                        }
-
-                        if (savedTags.IndexOf("CONC") >= 0)
-                        {
-                            savedTags.Delete(savedTags.IndexOf("CONC"));
-                        }
-                        if (savedTags.IndexOf("CONT") >= 0)
-                        {
-                            savedTags.Delete(savedTags.IndexOf("CONT"));
-                        }
-                    }
-
-                    int num3 = this.Count;
-                    for (int i = 0; i < num3; i++) {
                         GEDCOMTag tmp = this[i];
                         
-                        if (tmp.Name != "CONT" && tmp.Name != "CONC") {
+                        if (tmp.Name == "CONC" || tmp.Name == "CONT")
+                        {
                             tmp.SaveToStream(stream);
                         }
                     }
+
+                    if (savedTags.IndexOf("CONC") >= 0)
+                    {
+                        savedTags.Delete(savedTags.IndexOf("CONC"));
+                    }
+                    if (savedTags.IndexOf("CONT") >= 0)
+                    {
+                        savedTags.Delete(savedTags.IndexOf("CONT"));
+                    }
                 }
-                finally
-                {
-                    savedTags.Dispose();
+
+                int num3 = Count;
+                for (int i = 0; i < num3; i++) {
+                    GEDCOMTag tmp = this[i];
+                    
+                    if (tmp.Name != "CONT" && tmp.Name != "CONC") {
+                        tmp.SaveToStream(stream);
+                    }
                 }
+            }
+            finally
+            {
+                savedTags.Dispose();
             }
         }
 
         protected virtual void SaveValueToStream(StreamWriter stream)
         {
-            string str = this.fLevel.ToString() + " " + this.fName;
+            string str = fLevel.ToString() + " " + fName;
 
-            string val = this.StringValue;
+            string val = StringValue;
             if (!string.IsNullOrEmpty(val)) {
                 str = str + " " + val;
             }
@@ -610,8 +657,8 @@ namespace GKCommon.GEDCOM
 
         public virtual void SaveToStream(StreamWriter stream)
         {
-            this.SaveValueToStream(stream);
-            this.SaveTagsToStream(stream);
+            SaveValueToStream(stream);
+            SaveTagsToStream(stream);
         }
 
         #endregion

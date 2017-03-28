@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,11 +29,11 @@ namespace GKCore.Lists
     /// </summary>
     public enum CommunicationColumnType
     {
-        cctCommName,
-        cctCorresponder,
-        cctCommType,
-        cctDate,
-        cctChangeDate
+        ctCommName,
+        ctCorresponder,
+        ctCommType,
+        ctDate,
+        ctChangeDate
     }
 
     /// <summary>
@@ -44,16 +43,12 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_Theme, DataType.dtString, 300, true);
-            this.AddStatic(LSID.LSID_Corresponder, DataType.dtString, 200, true);
-            this.AddStatic(LSID.LSID_Type, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_Date, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public CommunicationListColumns() : base()
-        {
-            InitData(typeof(CommunicationColumnType));
+            // not to change the order of these lines in their changes
+            AddColumn(LSID.LSID_Theme, DataType.dtString, 300, true);
+            AddColumn(LSID.LSID_Corresponder, DataType.dtString, 200, true);
+            AddColumn(LSID.LSID_Type, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_Date, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -64,40 +59,50 @@ namespace GKCore.Lists
     {
         private GEDCOMCommunicationRecord fRec;
 
+        public CommunicationListMan(GEDCOMTree tree) : base(tree, new CommunicationListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(this.fRec.CommName, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fRec.CommName, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMCommunicationRecord);
+            fRec = (aRec as GEDCOMCommunicationRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    return this.fRec.CommName;
-                case 1:
-                    return GKUtils.GetCorresponderStr(this.fTree, this.fRec, false);
-                case 2:
-                    return LangMan.LS(GKData.CommunicationNames[(int)this.fRec.CommunicationType]);
-                case 3:
-                    return GetDateValue(this.fRec.Date, isVisible);
-                case 4:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((CommunicationColumnType)colType)
+            {
+                case CommunicationColumnType.ctCommName:
+                    result = fRec.CommName;
+                    break;
 
-        public CommunicationListMan(GEDCOMTree tree) : base(tree, new CommunicationListColumns())
-        {
+                case CommunicationColumnType.ctCorresponder:
+                    result = GKUtils.GetCorresponderStr(fTree, fRec, false);
+                    break;
+
+                case CommunicationColumnType.ctCommType:
+                    result = LangMan.LS(GKData.CommunicationNames[(int)fRec.CommunicationType]);
+                    break;
+
+                case CommunicationColumnType.ctDate:
+                    result = GetDateValue(fRec.Date, isVisible);
+                    break;
+
+                case CommunicationColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

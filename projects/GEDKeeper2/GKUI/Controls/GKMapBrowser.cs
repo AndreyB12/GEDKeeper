@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,14 +20,10 @@
 
 using System;
 using System.Globalization;
-using System.IO;
-using System.Net;
 using System.Windows.Forms;
-using System.Xml;
 
 using GKCommon;
-using GKCore.Maps;
-using GKCore.Options;
+using GKCore.Geocoding;
 
 namespace GKUI.Controls
 {
@@ -44,7 +40,7 @@ namespace GKUI.Controls
             public double MaxLat;
         }
 
-        private readonly ExtList<GMapPoint> fMapPoints;
+        private readonly ExtList<GeoPoint> fMapPoints;
         private bool fShowPoints;
         private bool fShowLines;
         private int fUpdateCount;
@@ -53,44 +49,44 @@ namespace GKUI.Controls
         public bool ShowPoints
         {
             get {
-                return this.fShowPoints;
+                return fShowPoints;
             }
             set {
-                this.fShowPoints = value;
-                this.RefreshPoints();
+                fShowPoints = value;
+                RefreshPoints();
             }
         }
 
         public bool ShowLines
         {
             get {
-                return this.fShowLines;
+                return fShowLines;
             }
             set {
-                this.fShowLines = value;
-                this.RefreshPoints();
+                fShowLines = value;
+                RefreshPoints();
             }
         }
 
-        public ExtList<GMapPoint> MapPoints
+        public ExtList<GeoPoint> MapPoints
         {
-            get { return this.fMapPoints; }
+            get { return fMapPoints; }
         }
 
         public GKMapBrowser()
         {
-            this.fMapPoints = new ExtList<GMapPoint>(true);
-            this.fUpdateCount = 0;
-            this.fShowPoints = true;
-            this.fShowLines = true;
+            fMapPoints = new ExtList<GeoPoint>(true);
+            fUpdateCount = 0;
+            fShowPoints = true;
+            fShowLines = true;
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                this.ClearPoints();
-                this.fMapPoints.Dispose();
+                ClearPoints();
+                fMapPoints.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -99,70 +95,70 @@ namespace GKUI.Controls
         private CoordsRect GetPointsFrame()
         {
             CoordsRect result = new CoordsRect();
-            if (this.fMapPoints.Count > 0)
+            if (fMapPoints.Count <= 0) return result;
+
+            GeoPoint pt = fMapPoints[0];
+            result.MinLon = pt.Longitude;
+            result.MaxLon = pt.Longitude;
+            result.MinLat = pt.Latitude;
+            result.MaxLat = pt.Latitude;
+
+            if (fMapPoints.Count == 1)
             {
-                GMapPoint pt = this.fMapPoints[0];
-                result.MinLon = pt.Longitude;
-                result.MaxLon = pt.Longitude;
-                result.MinLat = pt.Latitude;
-                result.MaxLat = pt.Latitude;
-
-                if (this.fMapPoints.Count == 1)
+                result.MinLon = (result.MinLon - 20.0);
+                result.MaxLon = (result.MaxLon + 20.0);
+                result.MinLat = (result.MinLat - 20.0);
+                result.MaxLat = (result.MaxLat + 20.0);
+            }
+            else
+            {
+                int num = fMapPoints.Count;
+                for (int i = 0; i < num; i++)
                 {
-                    result.MinLon = (result.MinLon - 20.0);
-                    result.MaxLon = (result.MaxLon + 20.0);
-                    result.MinLat = (result.MinLat - 20.0);
-                    result.MaxLat = (result.MaxLat + 20.0);
-                }
-                else
-                {
-                    int num = this.fMapPoints.Count;
-                    for (int i = 0; i < num; i++)
-                    {
-                        pt = this.fMapPoints[i];
+                    pt = fMapPoints[i];
 
-                        if (result.MinLon > pt.Longitude) result.MinLon = pt.Longitude;
-                        else if (result.MaxLon < pt.Longitude) result.MaxLon = pt.Longitude;
+                    if (result.MinLon > pt.Longitude) result.MinLon = pt.Longitude;
+                    else if (result.MaxLon < pt.Longitude) result.MaxLon = pt.Longitude;
 
-                        if (result.MinLat > pt.Latitude) result.MinLat = pt.Latitude;
-                        else if (result.MaxLat < pt.Latitude) result.MaxLat = pt.Latitude;
-                    }
+                    if (result.MinLat > pt.Latitude) result.MinLat = pt.Latitude;
+                    else if (result.MaxLat < pt.Latitude) result.MaxLat = pt.Latitude;
                 }
             }
+
             return result;
         }
 
         public int AddPoint(double latitude, double longitude, string hint)
         {
-            GMapPoint pt = new GMapPoint(latitude, longitude, hint);
-            return this.fMapPoints.Add(pt);
+            GeoPoint pt = new GeoPoint(latitude, longitude, hint);
+            return fMapPoints.Add(pt);
         }
 
         public void ClearPoints()
         {
-            this.gm_ClearPoints();
-            this.fMapPoints.Clear();
+            gm_ClearPoints();
+            fMapPoints.Clear();
         }
 
         public void DeletePoint(int index)
         {
-            this.fMapPoints.Delete(index);
-            this.RefreshPoints();
+            fMapPoints.Delete(index);
+            RefreshPoints();
         }
 
         public void BeginUpdate()
         {
-            this.fUpdateCount++;
+            fUpdateCount++;
         }
 
         public void EndUpdate()
         {
-            this.fUpdateCount--;
+            fUpdateCount--;
 
-            if (this.fUpdateCount <= 0)
+            if (fUpdateCount <= 0)
             {
-                this.RefreshPoints();
-                this.fUpdateCount = 0;
+                RefreshPoints();
+                fUpdateCount = 0;
             }
         }
 
@@ -170,24 +166,24 @@ namespace GKUI.Controls
         {
             string strContent = (documentText ?? string.Empty);
 
-            this.AllowNavigation = false;
-            this.ScriptErrorsSuppressed = true;
-            this.AllowWebBrowserDrop = false;
+            AllowNavigation = false;
+            ScriptErrorsSuppressed = true;
+            AllowWebBrowserDrop = false;
 
             #if !__MonoCS__
-            this.DocumentText = strContent;
+            DocumentText = strContent;
 
             // Wait for document being loaded
             for (int i = 0; i < 50; ++i)
             {
-                if (this.DocumentText == strContent) break;
+                if (DocumentText == strContent) break;
                 System.Threading.Thread.Sleep(20);
                 Application.DoEvents();
             }
-            //this.Refresh();
+            //Refresh();
             #else
-            this.DocumentText = strContent;
-            this.Refresh();
+            DocumentText = strContent;
+            Refresh();
             #endif
         }
 
@@ -199,7 +195,7 @@ namespace GKUI.Controls
                     "<html>" +
                     "<head>" +
                     "<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"/>" +
-                    "<script src=\"http://maps.googleapis.com/maps/api/js?sensor=false&language=ru&key=AIzaSyCo57eNeJx7-ws2eei6QgAVUxOnS95IqQM\" type=\"text/javascript\"></script>" +
+                    "<script src=\"http://maps.googleapis.com/maps/api/js?sensor=false&language=ru&key=AIzaSyCebJC5BpniJtRaJCSEl3tXdFy3KhbV5hk\" type=\"text/javascript\"></script>" +
                     "<script type=\"text/javascript\">" +
                     "var map;" +
                     "var markersArray = [];" +
@@ -246,42 +242,46 @@ namespace GKUI.Controls
 
         public void RefreshPoints()
         {
-            this.gm_ClearPoints();
+            gm_ClearPoints();
+            if (fMapPoints.Count <= 0) return;
 
-            if (this.fMapPoints.Count > 0)
+            string pointsScript = "";
+            string polylineScript = "";
+
+            int num = fMapPoints.Count;
+            for (int i = 0; i < num; i++)
             {
-                string pointsScript = "";
-                string polylineScript = "";
+                GeoPoint pt = fMapPoints[i];
+                pointsScript += string.Format("addMarker({0}, {1}, \"{2}\");", new object[]
+                                              { CoordToStr(pt.Latitude), CoordToStr(pt.Longitude), pt.Hint });
 
-                int num = this.fMapPoints.Count;
-                for (int i = 0; i < num; i++)
-                {
-                    GMapPoint pt = this.fMapPoints[i];
-                    pointsScript += string.Format("addMarker({0}, {1}, \"{2}\");", new object[]
-                                                  { CoordToStr(pt.Latitude), CoordToStr(pt.Longitude), pt.Hint });
-
-                    polylineScript = string.Concat(new string[]
+                /*polylineScript = string.Concat(new string[]
                                                    {
                                                        polylineScript, "new google.maps.LatLng(",
                                                        CoordToStr(pt.Latitude), ",", CoordToStr(pt.Longitude), "),"
-                                                   });
-                }
+                                                   });*/
 
-                if (this.ShowPoints)
-                {
-                    this.gm_ExecScript(pointsScript);
-                }
+                polylineScript = string.Concat(new string[]
+                                               {
+                                                   polylineScript,
+                                                   "{lat:", CoordToStr(pt.Latitude), ",lng:", CoordToStr(pt.Longitude), "},"
+                                               });
+            }
 
-                if (this.ShowLines)
-                {
-                    int num2 = (polylineScript != null) ? polylineScript.Length : 0;
-                    polylineScript = polylineScript.Remove(num2 - 1, 1);
-                    polylineScript =
-                        "var polyline = new google.maps.Polyline({path: [" + polylineScript + "],strokeColor: \"#FF0000\", strokeWeight: 3}); " +
-                        "polyline.setMap(map);"+
-                        "markersArray.push(polyline);";
-                    this.gm_ExecScript(polylineScript);
-                }
+            if (ShowPoints)
+            {
+                gm_ExecScript(pointsScript);
+            }
+
+            if (ShowLines)
+            {
+                int num2 = (polylineScript != null) ? polylineScript.Length : 0;
+                polylineScript = polylineScript.Remove(num2 - 1, 1);
+                polylineScript =
+                    "var polyline = new google.maps.Polyline({path: [" + polylineScript + "],strokeColor: '#FF0000', strokeWeight: 3}); " +
+                    "polyline.setMap(map);"/*+
+                        "markersArray.push(polyline);"*/;
+                gm_ExecScript(polylineScript);
             }
         }
 
@@ -305,124 +305,34 @@ namespace GKUI.Controls
                                        });
             }
 
-            this.gm_ExecScript(script);
+            gm_ExecScript(script);
         }
 
         public void ZoomToBounds()
         {
-            CoordsRect rt = this.GetPointsFrame();
+            CoordsRect rt = GetPointsFrame();
+            if (rt.MinLon == rt.MaxLon || rt.MinLat == rt.MaxLat) return;
 
-            if (rt.MinLon != rt.MaxLon && rt.MinLat != rt.MaxLat)
-            {
-                double centerLongtude = ((rt.MaxLon + rt.MinLon) / 2.0);
-                double centerLatitude = ((rt.MaxLat + rt.MinLat) / 2.0);
+            double centerLongtude = ((rt.MaxLon + rt.MinLon) / 2.0);
+            double centerLatitude = ((rt.MaxLat + rt.MinLat) / 2.0);
 
-                string script =
-                    "var point1 = new google.maps.LatLng({0}, {1});" +
-                    "var point2 = new google.maps.LatLng({2}, {3});" +
-                    "var bounds = new google.maps.LatLngBounds(point1, point2);" +
-                    "map.fitBounds(bounds);" +
-                    "map.setCenter(new google.maps.LatLng({4}, {5}));";
-                script = string.Format(script, new object[]
-                                       { CoordToStr(rt.MinLat), CoordToStr(rt.MinLon), CoordToStr(rt.MaxLat), CoordToStr(rt.MaxLon), CoordToStr(centerLatitude), CoordToStr(centerLongtude) });
+            string script =
+                "var point1 = new google.maps.LatLng({0}, {1});" +
+                "var point2 = new google.maps.LatLng({2}, {3});" +
+                "var bounds = new google.maps.LatLngBounds(point1, point2);" +
+                "map.fitBounds(bounds);" +
+                "map.setCenter(new google.maps.LatLng({4}, {5}));";
+            script = string.Format(script, new object[]
+                                   { CoordToStr(rt.MinLat), CoordToStr(rt.MinLon), CoordToStr(rt.MaxLat), CoordToStr(rt.MaxLon), CoordToStr(centerLatitude), CoordToStr(centerLongtude) });
 
-                this.gm_ExecScript(script);
-            }
-        }
-
-        private static bool GetInetFile(string fileURL, out Stream stream)
-        {
-            bool result;
-            try
-            {
-                HttpWebRequest request = (HttpWebRequest)WebRequest.CreateDefault(new Uri(fileURL));
-                request.ContentType = "application/x-www-form-urlencoded";
-                ProxyOptions proxy = MainWin.Instance.Options.Proxy;
-                if (proxy.UseProxy)
-                {
-                    request.Proxy = new WebProxy(proxy.Server + ":" + proxy.Port, true)
-                    {
-                        Credentials = CredentialCache.DefaultCredentials
-                    };
-                }
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-                stream = response.GetResponseStream();
-                result = true;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWrite("GKMapBrowser.GetInetFile(): " + ex.Message);
-                stream = null;
-                result = false;
-            }
-            return result;
-        }
-
-        public static void RequestGeoCoords(string searchValue, ExtList<GMapPoint> pointsList)
-        {
-            if (string.IsNullOrEmpty(searchValue))
-            {
-                throw new ArgumentNullException("searchValue");
-            }
-
-            if (pointsList == null)
-            {
-                throw new ArgumentNullException("pointsList");
-            }
-
-            Stream stm = null;
-            try
-            {
-                searchValue = searchValue.Trim().Replace(" ", "+");
-
-                string netQuery = "http://maps.googleapis.com/maps/api/geocode/xml?address={0}&sensor=false&language=ru";
-                netQuery = string.Format(netQuery, new object[] { searchValue });
-
-                if (!GetInetFile(netQuery, out stm)) return;
-
-                XmlDocument xmlDocument = new XmlDocument();
-                xmlDocument.Load(stm);
-                XmlNode node = xmlDocument.DocumentElement;
-
-                if (node != null && node.ChildNodes.Count > 0)
-                {
-                    int num = node.ChildNodes.Count;
-                    for (int i = 0; i < num; i++)
-                    {
-                        XmlNode xNode = node.ChildNodes[i];
-                        if (xNode.Name == "result")
-                        {
-                            XmlNode addressNode = xNode["formatted_address"];
-                            XmlNode geometry = xNode["geometry"];
-                            XmlNode pointNode = geometry["location"];
-
-                            if (addressNode != null && pointNode != null)
-                            {
-                                string ptHint = addressNode.InnerText;
-                                double ptLongitude = ConvHelper.ParseFloat(pointNode["lng"].InnerText, -1.0);
-                                double ptLatitude = ConvHelper.ParseFloat(pointNode["lat"].InnerText, -1.0);
-
-                                if (ptLatitude != -1.0 && ptLongitude != -1.0)
-                                {
-                                    GMapPoint pt = new GMapPoint(ptLatitude, ptLongitude, ptHint);
-                                    pointsList.Add(pt);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                if (stm != null) stm.Dispose();
-            }
+            gm_ExecScript(script);
         }
 
         #region Google-specific
 
         private void gm_ClearPoints()
         {
-            this.gm_ExecScript("clearOverlays();");
+            gm_ExecScript("clearOverlays();");
         }
 
         private void gm_ExecScript(string script)
@@ -433,17 +343,17 @@ namespace GKUI.Controls
             #if !__MonoCS__
             try
             {
-                HtmlElement script1 = this.Document.GetElementById("gkScript");
+                HtmlElement script1 = Document.GetElementById("gkScript");
 
                 if (script1 == null) {
-                    HtmlElement head = this.Document.GetElementsByTagName("head")[0];
-                    script1 = this.Document.CreateElement("script");
+                    HtmlElement head = Document.GetElementsByTagName("head")[0];
+                    script1 = Document.CreateElement("script");
                     script1.Id = "gkScript";
                     head.AppendChild(script1);
                 }
 
                 script1.SetAttribute("text", "function gkFunc() { " + script + " }");
-                this.Document.InvokeScript("gkFunc");
+                Document.InvokeScript("gkFunc");
 
                 //string jCode = "alert("Hello");"
                 //webBrowser1.Document.InvokeScript("eval", new object[] { jCode });
@@ -451,7 +361,7 @@ namespace GKUI.Controls
                 //var jsCode="alert('hello world from injected code');";
                 //WebBrowser.Document.InvokeScript("execScript", new Object[] { jsCode, "JavaScript" });
                 
-                //mshtml.IHTMLWindow2 win = (mshtml.IHTMLWindow2)this.Document.Window.DomWindow;
+                //mshtml.IHTMLWindow2 win = (mshtml.IHTMLWindow2)Document.Window.DomWindow;
                 //if (win != null) {
                 //    win.execScript(script, "JavaScript");
                 //}

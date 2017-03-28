@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -35,11 +35,11 @@ namespace GKCore.Kinships
 
         public KinshipRec(EnumSet<RelationKind> prevRels, EnumSet<RelationKind> currRels, RelationKind finRel, sbyte great, sbyte level)
         {
-            this.PrevRels = prevRels;
-            this.CurrRels = currRels;
-            this.FinRel = finRel;
-            this.Great = great;
-            this.Level = level;
+            PrevRels = prevRels;
+            CurrRels = currRels;
+            FinRel = finRel;
+            Great = great;
+            Level = level;
         }
     }
 }

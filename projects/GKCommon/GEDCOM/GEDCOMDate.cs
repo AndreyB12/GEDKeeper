@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -27,18 +27,14 @@ namespace GKCommon.GEDCOM
     [Serializable]
     public class GEDCOMDateException : EGEDCOMException
     {
-        public GEDCOMDateException()
-        {
-        }
-
         public GEDCOMDateException(string message) : base(message)
         {
         }
     }
 
     /// <summary>
-    /// Class to hold simple standard GEDCOM dates. 
-    /// Note: Year cannot be used externally with negative values even for "BC", because these dates there is a special property. 
+    /// Class to hold simple standard GEDCOM dates.
+    /// Note: Year cannot be used externally with negative values even for "BC", because these dates there is a special property.
     /// Dates of type "BC" should have a positive Year + the property YearBC.
     /// </summary>
     public class GEDCOMDate : GEDCOMCustomDate
@@ -55,49 +51,49 @@ namespace GKCommon.GEDCOM
 
         public GEDCOMCalendar DateCalendar
         {
-            get { return this.fDateCalendar; }
+            get { return fDateCalendar; }
         }
 
         public ushort Day
         {
-            get { return this.fDay; }
+            get { return fDay; }
             set {
-                this.fDay = value;
-                this.DateChanged();
+                fDay = value;
+                DateChanged();
             }
         }
 
         public string Month
         {
-            get { return this.fMonth; }
+            get { return fMonth; }
             set {
-                this.fMonth = value;
-                this.DateChanged();
+                fMonth = value;
+                DateChanged();
             }
         }
 
         public int Year
         {
-            get { return this.fYear; }
+            get { return fYear; }
             set {
-                this.fYear = value;
-                this.DateChanged();
+                fYear = value;
+                DateChanged();
             }
         }
 
         public bool YearBC
         {
-            get { return this.fYearBC; }
+            get { return fYearBC; }
             set {
-                this.fYearBC = value;
-                this.DateChanged();
+                fYearBC = value;
+                DateChanged();
             }
         }
 
         public string YearModifier
         {
-            get { return this.fYearModifier; }
-            set { this.fYearModifier = value; }
+            get { return fYearModifier; }
+            set { fYearModifier = value; }
         }
 
 
@@ -108,53 +104,56 @@ namespace GKCommon.GEDCOM
         protected override void CreateObj(GEDCOMTree owner, GEDCOMObject parent)
         {
             base.CreateObj(owner, parent);
-            base.SetName("DATE");
+            SetName("DATE");
 
-            this.fDateCalendar = GEDCOMCalendar.dcGregorian;
-            this.fYear = -1;
-            this.fYearBC = false;
-            this.fYearModifier = "";
-            this.fMonth = "";
-            this.fDay = 0;
-            this.fDateFormat = GEDCOMDateFormat.dfGEDCOMStd;
+            fDateCalendar = GEDCOMCalendar.dcGregorian;
+            fYear = -1;
+            fYearBC = false;
+            fYearModifier = "";
+            fMonth = "";
+            fDay = 0;
+            fDateFormat = GEDCOMDateFormat.dfGEDCOMStd;
         }
 
         public override void Clear()
         {
-            this.fDateCalendar = GEDCOMCalendar.dcGregorian;
-            this.fYear = -1;
-            this.fYearBC = false;
-            this.fYearModifier = "";
-            this.fMonth = "";
-            this.fDay = 0;
+            base.Clear();
 
-            this.DateChanged();
+            fDateCalendar = GEDCOMCalendar.dcGregorian;
+            fYear = -1;
+            fYearBC = false;
+            fYearModifier = "";
+            fMonth = "";
+            fDay = 0;
+
+            DateChanged();
         }
 
         public bool IsValidDate()
         {
-            return (this.fYear > 0 && this.fMonth != "" && this.fDay > 0);
+            return (fYear > 0 && fMonth != "" && fDay > 0);
         }
 
         public override bool IsEmpty()
         {
-            return base.IsEmpty() && this.fYear <= 0 && this.fMonth == "" && this.fDay <= 0;
+            return base.IsEmpty() && fYear <= 0 && fMonth == "" && fDay <= 0;
         }
 
         public override void Assign(GEDCOMTag source)
         {
-            if (source is GEDCOMDate)
+            GEDCOMDate date = source as GEDCOMDate;
+            if (date != null)
             {
-                GEDCOMDate srcDate = (source as GEDCOMDate);
+                GEDCOMDate srcDate = date;
 
-                this.fDateCalendar = srcDate.fDateCalendar;
-                this.fYear = srcDate.fYear;
-                this.fYearBC = srcDate.fYearBC;
-                this.fYearModifier = srcDate.fYearModifier;
-                this.fMonth = srcDate.fMonth;
-                this.fDay = srcDate.fDay;
+                fDateCalendar = srcDate.fDateCalendar;
+                fYear = srcDate.fYear;
+                fYearBC = srcDate.fYearBC;
+                fYearModifier = srcDate.fYearModifier;
+                fMonth = srcDate.fMonth;
+                fDay = srcDate.fDay;
 
-                this.DateChanged();
+                DateChanged();
             }
             else
             {
@@ -166,11 +165,11 @@ namespace GKCommon.GEDCOM
         {
             DateTime result;
 
-            ushort month = GEDCOMMonthToInt(this.fMonth);
-            ushort day = this.fDay;
-            if (this.fYear >= 0 && month >= 1 && month <= 12 && day >= 1 && day < 32)
+            ushort month = GEDCOMMonthToInt(fMonth);
+            ushort day = fDay;
+            if (fYear >= 0 && month >= 1 && month <= 12 && day >= 1 && day < 32)
             {
-                result = new DateTime(this.fYear, month, day);
+                result = new DateTime(fYear, month, day);
                 return result;
             }
 
@@ -180,66 +179,91 @@ namespace GKCommon.GEDCOM
 
         public override void SetDateTime(DateTime value)
         {
-            this.SetGregorian((ushort)value.Day, GEDCOMMonthArray[value.Month - 1], value.Year, "", false);
+            SetGregorian((ushort)value.Day, GEDCOMMonthArray[value.Month - 1], value.Year, "", false);
         }
 
         public override string ParseString(string strValue)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcGregorian;
-            this.fYear = -1;
-            this.fYearBC = false;
-            this.fYearModifier = "";
-            this.fMonth = "";
-            this.fDay = 0;
+            GEDCOMFormat format = (Owner == null) ? GEDCOMFormat.gf_Unknown : Owner.GetGEDCOMFormat();
+
+            fDateCalendar = GEDCOMCalendar.dcGregorian;
+            fYear = -1;
+            fYearBC = false;
+            fYearModifier = "";
+            fMonth = "";
+            fDay = 0;
 
             string result = strValue;
 
             if (!string.IsNullOrEmpty(result))
             {
+                if (format == GEDCOMFormat.gf_Ahnenblatt) {
+                    result = PrepareAhnenblattDate(result);
+                }
+
                 result = GEDCOMUtils.ExtractDelimiter(result, 0);
-                result = this.ExtractEscape(result);
+                result = ExtractEscape(result);
                 result = GEDCOMUtils.ExtractDelimiter(result, 0);
-                result = this.ExtractDay(result);
+                result = ExtractDay(result);
 
                 if (result.Length > 0)
                 {
                     if (result[0] == ' ')
                     {
-                        this.fDateFormat = GEDCOMDateFormat.dfGEDCOMStd;
+                        fDateFormat = GEDCOMDateFormat.dfGEDCOMStd;
                     }
                     else
                     {
                         if (result[0] == '.')
                         {
-                            this.fDateFormat = GEDCOMDateFormat.dfSystem;
+                            fDateFormat = GEDCOMDateFormat.dfSystem;
                         }
                     }
                 }
 
-                result = this.ExtractDelimiterEx(result);
-                result = this.ExtractMonth(result);
-                result = this.ExtractDelimiterEx(result);
-                result = this.ExtractYear(result);
+                result = ExtractDelimiterEx(result);
+                result = ExtractMonth(result);
+                result = ExtractDelimiterEx(result);
+                result = ExtractYear(result);
             }
 
-            this.DateChanged();
+            DateChanged();
 
             return result;
         }
 
         #region Private methods of parsing of the input format
 
+        private static string PrepareAhnenblattDate(string str)
+        {
+            // TODO: remove this dirty hack!
+            string result = str.Trim();
+            if (!string.IsNullOrEmpty(result)) {
+                if (result.StartsWith("(") && result.EndsWith(")")) {
+                    result = result.Substring(1, result.Length - 2);
+
+                    // ALERT: Ahnenblatt GEDCOM files can contain the dates with any separator!
+                    // by standard it's "(<DATE_PHRASE>)" (gedcom-5.5.1, p.47)
+                    // FIXME: this code need to move to GEDCOMDateInterpreted
+                    result = result.Replace('/', '.');
+                    result = result.Replace('-', '.');
+                    result = result.Replace(' ', '.');
+                }
+            }
+            return result;
+        }
+
         private string DayString(bool noDelimiter)
         {
             string result;
 
-            if (this.fDay <= 0)
+            if (fDay <= 0)
             {
                 result = "";
             }
             else
             {
-                result = this.fDay.ToString();
+                result = fDay.ToString();
                 if (result.Length == 1)
                 {
                     result = "0" + result;
@@ -256,9 +280,9 @@ namespace GKCommon.GEDCOM
         private string EscapeString(bool noDelimiter, bool alwaysShowEscape)
         {
             string result;
-            if (alwaysShowEscape || this.fDateCalendar != GEDCOMCalendar.dcGregorian)
+            if (alwaysShowEscape || fDateCalendar != GEDCOMCalendar.dcGregorian)
             {
-                result = GEDCOMDateEscapeArray[(int)this.fDateCalendar];
+                result = GEDCOMDateEscapeArray[(int)fDateCalendar];
                 if (!noDelimiter)
                 {
                     result += " ";
@@ -274,13 +298,13 @@ namespace GKCommon.GEDCOM
         private string MonthString(bool noDelimiter)
         {
             string result;
-            if (this.fMonth == "")
+            if (fMonth == "")
             {
                 result = "";
             }
             else
             {
-                result = this.fMonth;
+                result = fMonth;
                 if (!noDelimiter)
                 {
                     result += " ";
@@ -293,18 +317,18 @@ namespace GKCommon.GEDCOM
         {
             string result;
 
-            if (this.fYear == -1)
+            if (fYear == -1)
             {
                 result = "";
             }
             else
             {
-                result = this.fYear.ToString();
-                if (this.fYearModifier != "")
+                result = fYear.ToString();
+                if (fYearModifier != "")
                 {
-                    result = result + "/" + this.fYearModifier;
+                    result = result + "/" + fYearModifier;
                 }
-                if (this.fYearBC)
+                if (fYearBC)
                 {
                     result += GEDCOM_YEAR_BC;
                 }
@@ -321,14 +345,14 @@ namespace GKCommon.GEDCOM
         {
             string result;
 
-            if (this.fYear == -1)
+            if (fYear == -1)
             {
                 result = "";
             }
             else
             {
-                result = this.fYear.ToString();
-                if (this.fYearBC)
+                result = fYear.ToString();
+                if (fYearBC)
                 {
                     result += GEDCOM_YEAR_BC;
                 }
@@ -356,7 +380,7 @@ namespace GKCommon.GEDCOM
                     {
                         if (GEDCOMDateEscapeArray[(int)I] == su)
                         {
-                            this.fDateCalendar = I;
+                            fDateCalendar = I;
                             result = result.Remove(0, su.Length);
                             break;
                         }
@@ -382,7 +406,7 @@ namespace GKCommon.GEDCOM
 
             if (I >= 1 && I <= 2)
             {
-                this.fDay = (ushort)int.Parse(result.Substring(0, I));
+                fDay = (ushort)int.Parse(result.Substring(0, I));
                 result = result.Remove(0, I);
             }
 
@@ -391,7 +415,7 @@ namespace GKCommon.GEDCOM
 
         private string ExtractDelimiterEx(string str)
         {
-            string result = (this.fDateFormat == GEDCOMDateFormat.dfSystem) ? GEDCOMUtils.ExtractDotDelimiter(str, 0) : GEDCOMUtils.ExtractDelimiter(str, 0);
+            string result = (fDateFormat == GEDCOMDateFormat.dfSystem) ? GEDCOMUtils.ExtractDotDelimiter(str, 0) : GEDCOMUtils.ExtractDelimiter(str, 0);
             return result;
         }
 
@@ -400,7 +424,7 @@ namespace GKCommon.GEDCOM
             string result = str;
             if (!string.IsNullOrEmpty(result))
             {
-                switch (this.fDateCalendar)
+                switch (fDateCalendar)
                 {
                     case GEDCOMCalendar.dcHebrew:
                         {
@@ -410,7 +434,7 @@ namespace GKCommon.GEDCOM
                             {
                                 if (GEDCOMMonthHebrewArray[I - 1] == su)
                                 {
-                                    this.fMonth = su;
+                                    fMonth = su;
                                     result = result.Remove(0, 3);
                                     break;
                                 }
@@ -426,7 +450,7 @@ namespace GKCommon.GEDCOM
                             {
                                 if (GEDCOMMonthFrenchArray[I - 1] == su)
                                 {
-                                    this.fMonth = su;
+                                    fMonth = su;
                                     result = result.Remove(0, 4);
                                     break;
                                 }
@@ -446,7 +470,7 @@ namespace GKCommon.GEDCOM
                                 {
                                     if (GEDCOMMonthArray[I - 1] == su || dtInfo.AbbreviatedMonthNames[I - 1].ToUpper() == su)
                                     {
-                                        this.fMonth = GEDCOMMonthArray[I - 1];
+                                        fMonth = GEDCOMMonthArray[I - 1];
                                         result = result.Remove(0, 3);
                                         break;
                                     }
@@ -460,7 +484,7 @@ namespace GKCommon.GEDCOM
                                 {
                                     if (GEDCOMMonthSysArray[I - 1] == su)
                                     {
-                                        this.fMonth = GEDCOMMonthArray[I - 1];
+                                        fMonth = GEDCOMMonthArray[I - 1];
                                         result = result.Remove(0, 2);
                                         break;
                                     }
@@ -488,18 +512,32 @@ namespace GKCommon.GEDCOM
 
             if (I > 0)
             {
-                this.fYear = int.Parse(result.Substring(0, I));
+                fYear = int.Parse(result.Substring(0, I));
                 result = result.Remove(0, I);
 
-                if (result != "" && result[0] == '/' && GEDCOMUtils.IsDigits(result.Substring(1, 2)))
+                if (result != "" && result[0] == '/')
                 {
-                    this.fYearModifier = result.Substring(1, 2);
-                    result = result.Remove(0, 3);
+                    result = result.Remove(0, 1);
+
+                    if (result.Length > 0) {
+                        int len = (result.Length >= 4) ? 4 : 2;
+                        if (!GEDCOMUtils.IsDigits(result.Substring(0, len))) {
+                            len = (result.Length >= 2) ? 2 : 0;
+                            if (!GEDCOMUtils.IsDigits(result.Substring(0, len))) {
+                                len = 0;
+                            }
+                        }
+
+                        if (len > 0) {
+                            fYearModifier = result.Substring(0, len);
+                            result = result.Remove(0, len);
+                        }
+                    }
                 }
 
                 if (result != "" && result.Substring(0, 4).ToUpper() == GEDCOM_YEAR_BC)
                 {
-                    this.fYearBC = true;
+                    fYearBC = true;
                     result = result.Remove(0, 4);
                 }
             }
@@ -644,137 +682,142 @@ namespace GKCommon.GEDCOM
         protected override string GetStringValue()
         {
             string result;
-            if (this.fDateCalendar == GEDCOMCalendar.dcGregorian)
+            if (fDateCalendar == GEDCOMCalendar.dcGregorian)
             {
-                result = this.EscapeString(false, false) + this.DayString(false) + this.MonthString(false) + this.YearGregString(true);
+                result = EscapeString(false, false) + DayString(false) + MonthString(false) + YearGregString(true);
             }
             else
             {
-                result = this.EscapeString(false, false) + this.DayString(false) + this.MonthString(false) + this.YearString(true);
+                result = EscapeString(false, false) + DayString(false) + MonthString(false) + YearString(true);
             }
             return result;
         }
 
         public override void GetDateParts(out int year, out ushort month, out ushort day, out bool yearBC)
         {
-            year = this.fYear;
+            year = fYear;
 
-            switch (this.fDateCalendar) {
+            switch (fDateCalendar) {
                 case GEDCOMCalendar.dcHebrew:
-                    month = GEDCOMMonthHebrewToInt(this.fMonth);
+                    month = GEDCOMMonthHebrewToInt(fMonth);
                     break;
 
                 case GEDCOMCalendar.dcFrench:
-                    month = GEDCOMMonthFrenchToInt(this.fMonth);
+                    month = GEDCOMMonthFrenchToInt(fMonth);
                     break;
 
                 default:
-                    month = GEDCOMMonthToInt(this.fMonth);
+                    month = GEDCOMMonthToInt(fMonth);
                     break;
             }
 
-            day = this.fDay;
-            yearBC = this.fYearBC;
+            day = fDay;
+            yearBC = fYearBC;
         }
 
         public void SetGregorian(ushort day, ushort month, int year)
         {
-            this.SetGregorian(day, IntToGEDCOMMonth(month), year, "", false);
+            SetGregorian(day, IntToGEDCOMMonth(month), year, "", false);
         }
 
         public void SetGregorian(ushort day, string month, int year, string yearModifier, bool yearBC)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcGregorian;
-            this.fYear = year;
-            this.fYearBC = yearBC;
-            this.fYearModifier = yearModifier;
-            this.fDay = day;
-            this.fMonth = CheckGEDCOMMonth(month);
+            fDateCalendar = GEDCOMCalendar.dcGregorian;
+            fYear = year;
+            fYearBC = yearBC;
+            fYearModifier = yearModifier;
+            fDay = day;
+            fMonth = CheckGEDCOMMonth(month);
 
-            this.DateChanged();
+            DateChanged();
         }
 
         public void SetJulian(ushort day, ushort month, int year)
         {
-            this.SetJulian(day, IntToGEDCOMMonth(month), year, false);
+            SetJulian(day, IntToGEDCOMMonth(month), year, false);
         }
 
         public void SetJulian(ushort day, string month, int year, bool yearBC)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcJulian;
-            this.fYear = year;
-            this.fYearBC = yearBC;
-            this.fYearModifier = "";
-            this.fDay = day;
-            this.fMonth = CheckGEDCOMMonth(month);
+            fDateCalendar = GEDCOMCalendar.dcJulian;
+            fYear = year;
+            fYearBC = yearBC;
+            fYearModifier = "";
+            fDay = day;
+            fMonth = CheckGEDCOMMonth(month);
 
-            this.DateChanged();
+            DateChanged();
         }
 
         public void SetHebrew(ushort day, ushort month, int year)
         {
-            this.SetHebrew(day, IntToGEDCOMMonthHebrew(month), year, false);
+            SetHebrew(day, IntToGEDCOMMonthHebrew(month), year, false);
         }
 
         public void SetHebrew(ushort day, string month, int year, bool yearBC)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcHebrew;
-            this.fYear = year;
-            this.fYearBC = yearBC;
-            this.fYearModifier = "";
-            this.fDay = day;
-            this.fMonth = CheckGEDCOMMonthHebrew(month);
+            fDateCalendar = GEDCOMCalendar.dcHebrew;
+            fYear = year;
+            fYearBC = yearBC;
+            fYearModifier = "";
+            fDay = day;
+            fMonth = CheckGEDCOMMonthHebrew(month);
 
-            this.DateChanged();
+            DateChanged();
         }
 
         public void SetFrench(ushort day, ushort month, int year)
         {
-            this.SetFrench(day, IntToGEDCOMMonthFrench(month), year, false);
+            SetFrench(day, IntToGEDCOMMonthFrench(month), year, false);
         }
 
         public void SetFrench(ushort day, string month, int year, bool yearBC)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcFrench;
-            this.fYear = year;
-            this.fYearBC = yearBC;
-            this.fYearModifier = "";
-            this.fDay = day;
-            this.fMonth = CheckGEDCOMMonthFrench(month);
+            fDateCalendar = GEDCOMCalendar.dcFrench;
+            fYear = year;
+            fYearBC = yearBC;
+            fYearModifier = "";
+            fDay = day;
+            fMonth = CheckGEDCOMMonthFrench(month);
 
-            this.DateChanged();
+            DateChanged();
         }
 
         public void SetRoman(ushort day, string month, int year, bool yearBC)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcRoman;
-            this.fYear = year;
-            this.fYearBC = yearBC;
-            this.fYearModifier = "";
-            this.fDay = day;
-            this.fMonth = CheckGEDCOMMonth(month);
+            fDateCalendar = GEDCOMCalendar.dcRoman;
+            fYear = year;
+            fYearBC = yearBC;
+            fYearModifier = "";
+            fDay = day;
+            fMonth = CheckGEDCOMMonth(month);
 
-            this.DateChanged();
+            DateChanged();
         }
 
         public void SetUnknown(ushort day, string month, int year, bool yearBC)
         {
-            this.fDateCalendar = GEDCOMCalendar.dcUnknown;
-            this.fYear = year;
-            this.fYearBC = yearBC;
-            this.fYearModifier = "";
-            this.fDay = day;
-            this.fMonth = CheckGEDCOMMonth(month);
+            fDateCalendar = GEDCOMCalendar.dcUnknown;
+            fYear = year;
+            fYearBC = yearBC;
+            fYearModifier = "";
+            fDay = day;
+            fMonth = CheckGEDCOMMonth(month);
 
-            this.DateChanged();
+            DateChanged();
         }
 
         #region UDN processing
 
-        // GEDCOMCalendar { dcGregorian, dcJulian, dcHebrew, dcFrench, dcRoman, dcUnknown }
-        private static UDNCalendarType[] UDNCalendars = new UDNCalendarType[] {
-            UDNCalendarType.ctGregorian, UDNCalendarType.ctJulian, UDNCalendarType.ctHebrew,
-            UDNCalendarType.ctGregorian, UDNCalendarType.ctGregorian, UDNCalendarType.ctGregorian
+        // GEDCOMCalendar { dcGregorian, dcJulian, dcHebrew, dcFrench, dcRoman, dcIslamic, dcUnknown }
+        private static readonly UDNCalendarType[] UDNCalendars = new UDNCalendarType[] {
+            /* dcGregorian */   UDNCalendarType.ctGregorian,
+            /* dcJulian */      UDNCalendarType.ctJulian,
+            /* dcHebrew */      UDNCalendarType.ctHebrew,
+            /* dcFrench */      UDNCalendarType.ctGregorian, // not supported yet
+            /* dcRoman */       UDNCalendarType.ctGregorian, // not supported yet
+            /* dcIslamic */     UDNCalendarType.ctIslamic,
+            /* dcUnknown */     UDNCalendarType.ctGregorian
         };
 
         private void DateChanged()
@@ -782,16 +825,16 @@ namespace GKCommon.GEDCOM
             int year;
             ushort month, day;
             bool yearBC;
-            this.GetDateParts(out year, out month, out day, out yearBC);
+            GetDateParts(out year, out month, out day, out yearBC);
             if (yearBC) year = -year;
 
-            UDNCalendarType udnCalendar = UDNCalendars[(int)this.fDateCalendar];
-            this.fUDN = new UDN(udnCalendar, year, month, day);
+            UDNCalendarType udnCalendar = UDNCalendars[(int)fDateCalendar];
+            fUDN = new UDN(udnCalendar, year, month, day);
         }
 
         public override UDN GetUDN()
         {
-            return this.fUDN;
+            return fUDN;
         }
 
         #endregion

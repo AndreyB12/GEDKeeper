@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,25 +18,34 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System.IO;
 using GKCommon.GEDCOM;
 using GKCore;
-
+using GKCore.Interfaces;
 using NUnit.Framework;
 
 namespace GKTests
 {
     public static class TestStubs
     {
-        public static BaseContext CreateContext()
+        public static string CSVData =
+            "test,test2,test3,test4\r\n"+
+            "12,\"alpha\",12.5,15.4\r\n"+
+            "15,\"beta\",15.4,3.7\r\n"+
+            "2100,\"gamma delta\",21.5,1.02\r\n"+
+            "91000,\"omega\",21.5,1.02\r\n";
+
+
+        public static BaseContext CreateContext(/*IBaseWindow baseWin = null*/)
         {
             GEDCOMTree tree = new GEDCOMTree();
             Assert.IsNotNull(tree);
 
-            BaseContext context = new BaseContext(tree, null);
+            BaseContext context = new BaseContext(tree, /*baseWin*/null);
             return context;
         }
 
-        public static void FillContext(BaseContext context)
+        public static void FillContext(IBaseContext context)
         {
             // a null result if the record is not defined
             GEDCOMCustomEvent evt = context.CreateEventEx(null, "BIRT", "xxxxx", "xxxxx");
@@ -48,8 +57,8 @@ namespace GKTests
 
             evt = iRec.FindEvent("BIRT");
             Assert.IsNotNull(evt);
-            evt.Detail.Date.ParseString("28 DEC 1990");
-            evt.Detail.Place.StringValue = "Ivanovo";
+            evt.Date.ParseString("28 DEC 1990");
+            evt.Place.StringValue = "Ivanovo";
 
             GEDCOMCustomEvent evtd = context.CreateEventEx(iRec, "DEAT", "28 DEC 2010", "Ivanovo");
             Assert.IsNotNull(evtd);
@@ -58,15 +67,17 @@ namespace GKTests
             GEDCOMIndividualRecord iRec2 = context.CreatePersonEx("Maria", "Petrovna", "Ivanova", GEDCOMSex.svFemale, true);
             evt = iRec2.FindEvent("BIRT");
             Assert.IsNotNull(evt);
-            evt.Detail.Date.ParseString("17 MAR 1990");
-            evt.Detail.Place.StringValue = "Ivanovo";
+            evt.Date.ParseString("17 MAR 1990");
+            evt.Place.StringValue = "Ivanovo";
+
+            iRec.AddAssociation("spouse", iRec2);
 
             // third individual, child
             GEDCOMIndividualRecord iRec3 = context.CreatePersonEx("Anna", "Ivanovna", "Ivanova", GEDCOMSex.svFemale, true);
             evt = iRec3.FindEvent("BIRT");
             Assert.IsNotNull(evt);
-            evt.Detail.Date.ParseString("11 FEB 2010");
-            evt.Detail.Place.StringValue = "Ivanovo";
+            evt.Date.ParseString("11 FEB 2010");
+            evt.Place.StringValue = "Ivanovo";
 
             // their family
             GEDCOMFamilyRecord famRec = context.Tree.CreateFamily();
@@ -75,20 +86,27 @@ namespace GKTests
             famRec.AddSpouse(iRec2);
             famRec.AddChild(iRec3);
 
+            context.CreateEventEx(famRec, "MARR", "01 JAN 2000", "unknown");
+
             // individual outside the family
             GEDCOMIndividualRecord iRec4 = context.CreatePersonEx("Alex", "", "Petrov", GEDCOMSex.svMale, true);
             evt = iRec4.FindEvent("BIRT");
             Assert.IsNotNull(evt);
-            evt.Detail.Date.ParseString("15 JUN 1989");
-            evt.Detail.Place.StringValue = "Far Forest";
+            evt.Date.ParseString("15 JUN 1989");
+            evt.Place.StringValue = "Far Forest";
 
             evt = context.CreateEventEx(iRec4, "RESI", "12 FEB", "Far Forest");
             Assert.IsNotNull(evt);
+
+            // fifth
+            GEDCOMIndividualRecord iRec5 = context.CreatePersonEx("Anna", "", "Jones", GEDCOMSex.svFemale, false);
+            Assert.IsNotNull(iRec5);
 
             // group for tests
             GEDCOMGroupRecord groupRec = context.Tree.CreateGroup();
             groupRec.GroupName = "GroupTest";
             Assert.IsNotNull(groupRec, "group1 != null");
+            groupRec.AddMember(iRec);
 
             // location for tests
             GEDCOMLocationRecord locRec = context.Tree.CreateLocation();
@@ -111,6 +129,13 @@ namespace GKTests
             GEDCOMSourceRecord srcRec = context.Tree.CreateSource();
             srcRec.FiledByEntry = "Test source";
             Assert.IsNotNull(srcRec, "srcRec != null");
+            iRec.AddSource(srcRec, "p1", 0);
+
+            // note for tests
+            GEDCOMNoteRecord noteRec = context.Tree.CreateNote();
+            noteRec.SetNoteText("Test note");
+            Assert.IsNotNull(noteRec, "noteRec != null");
+            iRec.AddNote(noteRec);
 
             // task for tests
             GEDCOMTaskRecord tskRec = context.Tree.CreateTask();
@@ -124,11 +149,25 @@ namespace GKTests
             fileRef.Title = "Test multimedia";
             fileRef.LinkFile("sample.png");
             Assert.IsNotNull(mediaRec, "mediaRec != null");
+            iRec.AddMultimedia(mediaRec);
 
             // communication for tests
             GEDCOMCommunicationRecord commRec = context.Tree.CreateCommunication();
             commRec.CommName = "Test communication";
             Assert.IsNotNull(commRec, "commRec != null");
+        }
+
+        public static string GetTempFilePath(string fileName)
+        {
+            #if !__MonoCS__
+            fileName = GKUtils.GetTempDir() + fileName;
+            #else
+            fileName = GKUtils.GetHomePath() + fileName;
+            #endif
+
+            if (File.Exists(fileName)) File.Delete(fileName); // for local tests!
+
+            return fileName;
         }
     }
 }

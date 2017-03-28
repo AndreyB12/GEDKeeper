@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -31,9 +31,9 @@ namespace GKCore.Interfaces
         IListFilter Filter { get; }
         IListColumns ListColumns { get; }
 
-        void AddCondition(Enum column, ConditionKind condition, string value);
+        void AddCondition(byte columnId, ConditionKind condition, string value);
         DataType GetColumnDataType(int index);
-        string GetColumnName(Enum colType);
+        string GetColumnName(byte columnId);
         void InitFilter();
         void WidthChanged(int colIndex, int colWidth);
     }

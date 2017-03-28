@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -24,6 +24,7 @@ using System.Windows.Forms;
 using GKCommon.GEDCOM;
 using GKCore;
 using GKCore.Interfaces;
+using GKCore.Options;
 using GKCore.Types;
 
 namespace GKUI.Dialogs
@@ -31,7 +32,7 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class AssociationEditDlg : Form, IBaseEditor
+    public sealed partial class AssociationEditDlg : Form, IBaseEditor
     {
         private readonly IBaseWindow fBase;
         private GEDCOMAssociation fAssociation;
@@ -39,74 +40,74 @@ namespace GKUI.Dialogs
 
         public GEDCOMAssociation Association
         {
-            get { return this.fAssociation; }
-            set { this.SetAssociation(value); }
+            get { return fAssociation; }
+            set { SetAssociation(value); }
         }
 
         public IBaseWindow Base
         {
-            get { return this.fBase; }
+            get { return fBase; }
         }
 
         private void SetAssociation(GEDCOMAssociation value)
         {
-            this.fAssociation = value;
-            this.cmbRelation.Text = this.fAssociation.Relation;
-            string st = ((this.fAssociation.Individual == null) ? "" : this.fAssociation.Individual.GetNameString(true, false));
-            this.txtPerson.Text = st;
+            fAssociation = value;
+            cmbRelation.Text = fAssociation.Relation;
+            string st = ((fAssociation.Individual == null) ? "" : GKUtils.GetNameString(fAssociation.Individual, true, false));
+            txtPerson.Text = st;
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                string rel = this.cmbRelation.Text.Trim();
-                if (rel != "" && MainWin.Instance.Options.Relations.IndexOf(rel) < 0)
+                string rel = cmbRelation.Text.Trim();
+                if (rel != "" && GlobalOptions.Instance.Relations.IndexOf(rel) < 0)
                 {
-                    MainWin.Instance.Options.Relations.Add(rel);
+                    GlobalOptions.Instance.Relations.Add(rel);
                 }
 
-                this.fAssociation.Relation = this.cmbRelation.Text;
-                this.fAssociation.Individual = this.fTempInd;
-                this.DialogResult = DialogResult.OK;
+                fAssociation.Relation = cmbRelation.Text;
+                fAssociation.Individual = fTempInd;
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("AssociationEditDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("AssociationEditDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
             }
         }
 
         private void btnPersonAdd_Click(object sender, EventArgs e)
         {
-            this.fTempInd = this.fBase.SelectPerson(null, TargetMode.tmNone, GEDCOMSex.svNone);
-            this.txtPerson.Text = ((this.fTempInd == null) ? "" : this.fTempInd.GetNameString(true, false));
+            fTempInd = fBase.SelectPerson(null, TargetMode.tmNone, GEDCOMSex.svNone);
+            txtPerson.Text = ((fTempInd == null) ? "" : GKUtils.GetNameString(fTempInd, true, false));
         }
 
-        public AssociationEditDlg(IBaseWindow aBase)
+        public AssociationEditDlg(IBaseWindow baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.btnPersonAdd.Image = global::GKResources.iRecNew;
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+            btnPersonAdd.Image = GKResources.iRecNew;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fBase = aBase;
+            fBase = baseWin;
 
-            int num = MainWin.Instance.Options.Relations.Count;
+            int num = GlobalOptions.Instance.Relations.Count;
             for (int i = 0; i < num; i++)
             {
-                this.cmbRelation.Items.Add(MainWin.Instance.Options.Relations[i]);
+                cmbRelation.Items.Add(GlobalOptions.Instance.Relations[i]);
             }
 
             // SetLang()
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.Text = LangMan.LS(LSID.LSID_Association);
-            this.lblRelation.Text = LangMan.LS(LSID.LSID_Relation);
-            this.lblPerson.Text = LangMan.LS(LSID.LSID_Person);
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            Text = LangMan.LS(LSID.LSID_Association);
+            lblRelation.Text = LangMan.LS(LSID.LSID_Relation);
+            lblPerson.Text = LangMan.LS(LSID.LSID_Person);
 
-            this.toolTip1.SetToolTip(this.btnPersonAdd, LangMan.LS(LSID.LSID_PersonAttachTip));
+            toolTip1.SetToolTip(btnPersonAdd, LangMan.LS(LSID.LSID_PersonAttachTip));
         }
     }
 }

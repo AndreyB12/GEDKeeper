@@ -1,4 +1,3 @@
-/files/
 /plugins/*.*
 /*.exe*
 /*.dll
@@ -7,17 +6,30 @@
 *.suo
 *.userprefs
 *.DotSettings.user
-gource-gk.cmd
 
-CodecovSender.ps1
-CodecovUploader.sh
-OpenCover.cmd
+gource-gk.cmd
+build_coverity.cmd
+/projects/GEDKeeper2.mswin-cov.sln
+sonarqube.cmd
+code_heat.sh
 
 /projects/GEDKeeper2/bin/
 /projects/GEDKeeper2/obj/
 
 /projects/GKCommon/bin/
 /projects/GKCommon/obj/
+
+/projects/GKMediaPlayer/bin/
+/projects/GKMediaPlayer/obj/
+
+/projects/GKIntl/bin/
+/projects/GKIntl/obj/
+
+/projects/GKSandbox/bin/
+/projects/GKSandbox/obj/
+
+/projects/GKUpdater/bin/
+/projects/GKUpdater/obj/
 
 /projects/GKTests/bin/
 /projects/GKTests/obj/
@@ -41,6 +53,9 @@ OpenCover.cmd
 
 /projects/GKNamesBookPlugin/bin/
 /projects/GKNamesBookPlugin/obj/
+
+/projects/GKNavigatorPlugin/bin/
+/projects/GKNavigatorPlugin/obj/
 
 /projects/GKPedigreeImporterPlugin/bin/
 /projects/GKPedigreeImporterPlugin/obj/

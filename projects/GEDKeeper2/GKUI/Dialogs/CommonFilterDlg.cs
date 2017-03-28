@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -35,54 +35,54 @@ namespace GKUI.Dialogs
     {
         private readonly IBaseWindow fBase;
         private readonly string[] fFields;
-        private readonly ListManager fListMan;
+        private readonly IListManager fListMan;
         private MaskedTextBox fMaskedTextBox;
 
         public IBaseWindow Base
         {
-            get { return this.fBase; }
+            get { return fBase; }
+        }
+
+        public IListManager ListMan
+        {
+            get { return fListMan; }
         }
 
         public CommonFilterDlg()
         {
-            this.InitializeComponent();
+            InitializeComponent();
         }
 
-        public CommonFilterDlg(IBaseWindow aBase, ListManager listMan)
+        public CommonFilterDlg(IBaseWindow baseWin, IListManager listMan)
         {
-            if (aBase == null)
-            {
-                throw new ArgumentNullException("aBase");
-            }
+            if (baseWin == null)
+                throw new ArgumentNullException("baseWin");
 
             if (listMan == null)
-            {
                 throw new ArgumentNullException("listMan");
-            }
 
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.btnAccept.Image = (Image)MainWin.ResourceManager.GetObjectEx("iBtnAccept");
-            this.btnCancel.Image = (Image)MainWin.ResourceManager.GetObjectEx("iBtnCancel");
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fBase = aBase;
-            this.fListMan = listMan;
+            fBase = baseWin;
+            fListMan = listMan;
 
-            Type colEnum = fListMan.ListColumns.GetColumnsEnum();
-            Array enums = Enum.GetValues(colEnum);
-            this.fFields = new string[enums.Length + 1];
-            this.fFields[0] = "";
-            int idx = 1;
-            foreach (Enum e in enums)
+            ListColumns listColumns = (ListColumns)fListMan.ListColumns;
+            fFields = new string[listColumns.Count + 1]; // +empty item
+            fFields[0] = "";
+
+            for (int idx = 0; idx < listColumns.Count; idx++)
             {
-                this.fFields[idx] = fListMan.GetColumnName(e);
-                idx++;
+                var cs = listColumns[idx];
+                fFields[idx + 1] = fListMan.GetColumnName(cs.Id);
             }
 
-            this.InitGrid();
-            this.UpdateGrid();
+            SetLang();
 
-            this.SetLang();
+            InitGrid();
+            UpdateGrid();
         }
 
         protected override void Dispose(bool disposing)
@@ -111,22 +111,19 @@ namespace GKUI.Dialogs
             return res;
         }
 
-        private Enum GetFieldColumn(string fieldName)
+        private int GetFieldColumnId(string fieldName)
         {
             int idx = -1;
             for (int i = 0; i < fFields.Length; i++)
             {
                 if (fFields[i] == fieldName)
                 {
-                    idx = i;
+                    idx = i - 1; // exclude empty item
                     break;
                 }
             }
 
-            idx = idx - 1; // exclude empty item
-            Type colEnum = fListMan.ListColumns.GetColumnsEnum();
-            Array enums = Enum.GetValues(colEnum);
-            return (Enum)enums.GetValue(idx);
+            return idx;
         }
 
         private static DataGridViewColumn AddTextColumn(string colName, string headerText, int width)
@@ -150,24 +147,25 @@ namespace GKUI.Dialogs
 
         private void InitGrid()
         {
-            this.fMaskedTextBox = new MaskedTextBox();
-            this.fMaskedTextBox.Visible = false;
-            this.fMaskedTextBox.Mask = @"00/00/0000";
-            this.fMaskedTextBox.TextMaskFormat = MaskFormat.IncludePromptAndLiterals;
-            this.dataGridView1.Controls.Add(this.fMaskedTextBox);
+            fMaskedTextBox = new MaskedTextBox();
+            fMaskedTextBox.Visible = false;
+            fMaskedTextBox.Name = "fMaskedTextBox";
+            fMaskedTextBox.Mask = @"00/00/0000";
+            fMaskedTextBox.TextMaskFormat = MaskFormat.IncludePromptAndLiterals;
+            dataGridView1.Controls.Add(fMaskedTextBox);
 
-            this.dataGridView1.Rows.Clear();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
-            this.dataGridView1.Columns.AddRange(new DataGridViewColumn[] {
-                                                    AddComboColumn("FField", LangMan.LS(LSID.LSID_Field), this.fFields, 200),
-                                                    AddComboColumn("FCondition", LangMan.LS(LSID.LSID_Condition), GKData.CondSigns, 150),
-                                                    AddTextColumn("FValue", LangMan.LS(LSID.LSID_Value), 300)});
+            dataGridView1.Rows.Clear();
+            ((System.ComponentModel.ISupportInitialize)(dataGridView1)).BeginInit();
+            dataGridView1.Columns.AddRange(new DataGridViewColumn[] {
+                                               AddComboColumn("FField", LangMan.LS(LSID.LSID_Field), fFields, 200),
+                                               AddComboColumn("FCondition", LangMan.LS(LSID.LSID_Condition), GKData.CondSigns, 150),
+                                               AddTextColumn("FValue", LangMan.LS(LSID.LSID_Value), 300)});
 
-            this.dataGridView1.CellBeginEdit += dataGridView1_CellBeginEdit;
-            this.dataGridView1.CellEndEdit += dataGridView1_CellEndEdit;
-            this.dataGridView1.Scroll += dataGridView1_Scroll;
+            dataGridView1.CellBeginEdit += dataGridView1_CellBeginEdit;
+            dataGridView1.CellEndEdit += dataGridView1_CellEndEdit;
+            dataGridView1.Scroll += dataGridView1_Scroll;
 
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(dataGridView1)).EndInit();
         }
 
         private bool IsGEDCOMDateCell(int rowIndex)
@@ -176,10 +174,9 @@ namespace GKUI.Dialogs
 
             string fld = (string)row.Cells[0].Value;
             if (!string.IsNullOrEmpty(fld)) {
-                Enum column = GetFieldColumn(fld);
-                int col = (column as IConvertible).ToByte(null);
-                DataType dataType = fListMan.GetColumnDataType(col);
-                
+                int colId = GetFieldColumnId(fld);
+                DataType dataType = fListMan.GetColumnDataType(colId);
+
                 return (dataType == DataType.dtGEDCOMDate);
             }
 
@@ -188,84 +185,85 @@ namespace GKUI.Dialogs
 
         private void dataGridView1_Scroll(object sender, ScrollEventArgs e)
         {
-            if (this.fMaskedTextBox.Visible)
+            if (fMaskedTextBox.Visible)
             {
-                DataGridViewCell cell = this.dataGridView1.CurrentCell;
-                Rectangle rect = this.dataGridView1.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, true);
-                this.fMaskedTextBox.Location = rect.Location;
+                DataGridViewCell cell = dataGridView1.CurrentCell;
+                Rectangle rect = dataGridView1.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, true);
+                fMaskedTextBox.Location = rect.Location;
             }
         }
 
         private void dataGridView1_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
         {
-            if (e.ColumnIndex == 2 && e.RowIndex < this.dataGridView1.NewRowIndex) {
-                if (this.IsGEDCOMDateCell(e.RowIndex)) {
-                    Rectangle rect = this.dataGridView1.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, true);
+            if (e.ColumnIndex == 2 && e.RowIndex < dataGridView1.NewRowIndex) {
+                if (IsGEDCOMDateCell(e.RowIndex)) {
+                    Rectangle rect = dataGridView1.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, true);
 
-                    if (this.dataGridView1[e.ColumnIndex, e.RowIndex].Value != null) {
-                        this.fMaskedTextBox.Text = this.dataGridView1[e.ColumnIndex, e.RowIndex].Value.ToString();
+                    if (dataGridView1[e.ColumnIndex, e.RowIndex].Value != null) {
+                        fMaskedTextBox.Text = dataGridView1[e.ColumnIndex, e.RowIndex].Value.ToString();
                     } else {
-                        this.fMaskedTextBox.Text = "";
+                        fMaskedTextBox.Text = "";
                     }
 
-                    this.fMaskedTextBox.Location = rect.Location;
-                    this.fMaskedTextBox.Size = rect.Size;
-                    this.fMaskedTextBox.Visible = true;
-                    this.fMaskedTextBox.Focus();
+                    fMaskedTextBox.Location = rect.Location;
+                    fMaskedTextBox.Size = rect.Size;
+                    fMaskedTextBox.Visible = true;
+                    fMaskedTextBox.Focus();
                 }
             }
         }
 
         private void dataGridView1_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
-            if (this.fMaskedTextBox.Visible) {
-                this.dataGridView1.CurrentCell.Value = this.fMaskedTextBox.Text;
-                this.fMaskedTextBox.Visible = false;
-                this.dataGridView1.Focus();
+            if (fMaskedTextBox.Visible) {
+                dataGridView1.CurrentCell.Value = fMaskedTextBox.Text;
+                fMaskedTextBox.Visible = false;
+                dataGridView1.Focus();
             }
         }
 
         private void UpdateGrid()
         {
-            this.dataGridView1.Rows.Clear();
+            dataGridView1.Rows.Clear();
 
             int num = fListMan.Filter.Conditions.Count;
-            for (int i = 0; i < num; i++) {
+            for (int i = 0; i < num; i++)
+            {
                 FilterCondition fcond = fListMan.Filter.Conditions[i];
 
-                int r = this.dataGridView1.Rows.Add();
+                int r = dataGridView1.Rows.Add();
                 DataGridViewRow row = dataGridView1.Rows[r];
 
                 int condIndex = ((IConvertible)fcond.Condition).ToByte(null);
 
-                row.Cells[0].Value = this.fFields[fcond.ColumnIndex + 1];
+                row.Cells[0].Value = fFields[fcond.ColumnIndex + 1];
                 row.Cells[1].Value = GKData.CondSigns[condIndex];
                 row.Cells[2].Value = fcond.Value.ToString();
             }
 
             //this.dataGridView1.AutoResizeColumns();
-            this.dataGridView1.Columns[0].Width = 150;
-            this.dataGridView1.Columns[1].Width = 150;
-            this.dataGridView1.Columns[2].Width = 150;
+            dataGridView1.Columns[0].Width = 150;
+            dataGridView1.Columns[1].Width = 150;
+            dataGridView1.Columns[2].Width = 150;
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                this.AcceptChanges();
-                base.DialogResult = DialogResult.OK;
+                AcceptChanges();
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("CommonFilterDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("CommonFilterDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
             }
         }
 
         private void btnReset_Click(object sender, EventArgs e)
         {
-            this.DoReset();
+            DoReset();
         }
 
         #endregion
@@ -279,14 +277,17 @@ namespace GKUI.Dialogs
             {
                 DataGridViewRow row = dataGridView1.Rows[r];
 
+                // ".Value" can be null, so that we should to use direct cast
                 string fld = (string)row.Cells[0].Value;
                 string cnd = (string)row.Cells[1].Value;
                 string val = (string)row.Cells[2].Value;
 
                 if (!string.IsNullOrEmpty(fld)) {
-                    ConditionKind cond = GetCondByName(cnd);
-                    Enum column = GetFieldColumn(fld);
-                    fListMan.AddCondition(column, cond, val);
+                    int colId = GetFieldColumnId(fld);
+                    if (colId != -1) {
+                        ConditionKind cond = GetCondByName(cnd);
+                        fListMan.AddCondition((byte)colId, cond, val);
+                    }
                 }
             }
 
@@ -295,16 +296,19 @@ namespace GKUI.Dialogs
 
         public void SetLang()
         {
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.btnReset.Text = LangMan.LS(LSID.LSID_DlgReset);
-            this.tsFieldsFilter.Text = LangMan.LS(LSID.LSID_FieldsFilter);
+            GKData.CondSigns[6] = LangMan.LS(LSID.LSID_CondContains);
+            GKData.CondSigns[7] = LangMan.LS(LSID.LSID_CondNotContains);
+
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            btnReset.Text = LangMan.LS(LSID.LSID_DlgReset);
+            tsFieldsFilter.Text = LangMan.LS(LSID.LSID_FieldsFilter);
         }
 
         public virtual void DoReset()
         {
             fListMan.Filter.Clear();
-            this.UpdateGrid();
+            UpdateGrid();
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -26,8 +26,8 @@ namespace GKCommon.GEDCOM
     {
         public StringList Note
         {
-            get { return base.GetTagStrings(this); }
-            set { base.SetTagStrings(this, value); }
+            get { return GetTagStrings(this); }
+            set { SetTagStrings(this, value); }
         }
 
         public new static GEDCOMTag Create(GEDCOMTree owner, GEDCOMObject parent, string tagName, string tagValue)
@@ -42,17 +42,20 @@ namespace GKCommon.GEDCOM
         protected override void CreateObj(GEDCOMTree owner, GEDCOMObject parent)
         {
             base.CreateObj(owner, parent);
-            base.SetRecordType(GEDCOMRecordType.rtNote);
-            base.SetName("NOTE");
+            SetRecordType(GEDCOMRecordType.rtNote);
+            SetName("NOTE");
         }
 
+        /// <summary>
+        /// The MoveTo() merges records and their references, but does not change the text in the target.
+        /// </summary>
+        /// <param name="targetRecord"></param>
+        /// <param name="clearDest"></param>
         public override void MoveTo(GEDCOMRecord targetRecord, bool clearDest)
         {
             GEDCOMNoteRecord targetNote = (targetRecord as GEDCOMNoteRecord);
             if (targetNote == null)
-            {
                 throw new ArgumentException(@"Argument is null or wrong type", "targetRecord");
-            }
 
             StringList cont = new StringList();
             try
@@ -71,10 +74,10 @@ namespace GKCommon.GEDCOM
         {
             GEDCOMNoteRecord note = tag as GEDCOMNoteRecord;
             if (note == null) return 0.0f;
-            
+
             float match = 0.0f;
 
-            if (string.Compare(this.Note.Text, note.Note.Text, true) == 0) {
+            if (string.Compare(Note.Text, note.Note.Text, true) == 0) {
                 match = 100.0f;
             }
 
@@ -83,7 +86,7 @@ namespace GKCommon.GEDCOM
 
         public void SetNotesArray(params string[] value)
         {
-            base.SetTagStrings(this, value);
+            SetTagStrings(this, value);
         }
 
         public void AddNoteText(string text)
@@ -91,9 +94,9 @@ namespace GKCommon.GEDCOM
             StringList strData = new StringList();
             try
             {
-                strData.Text = this.Note.Text.Trim();
+                strData.Text = Note.Text.Trim();
                 strData.Add(text);
-                this.Note = strData;
+                Note = strData;
             }
             finally
             {
@@ -103,14 +106,13 @@ namespace GKCommon.GEDCOM
 
         public void SetNoteText(string text)
         {
-            if (text == null) {
+            if (text == null)
                 throw new ArgumentNullException("text");
-            }
 
             StringList strData = new StringList(text);
             try
             {
-                this.Note = strData;
+                Note = strData;
             }
             finally
             {

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -24,20 +24,20 @@ namespace GKCommon.GEDCOM
     {
         public GEDCOMMultimediaFormat MultimediaFormat
         {
-            get { return GEDCOMUtils.GetMultimediaFormatVal(base.GetTagStringValue("FORM")); }
-            set { base.SetTagStringValue("FORM", GEDCOMUtils.GetMultimediaFormatStr(value)); }
+            get { return GEDCOMUtils.GetMultimediaFormatVal(GetTagStringValue("FORM")); }
+            set { SetTagStringValue("FORM", GEDCOMUtils.GetMultimediaFormatStr(value)); }
         }
 
         public GEDCOMMediaType MediaType
         {
-            get { return GEDCOMUtils.GetMediaTypeVal(base.GetTagStringValue(this.MediaTypeTagName())); }
-            set { base.SetTagStringValue(this.MediaTypeTagName(), GEDCOMUtils.GetMediaTypeStr(value)); }
+            get { return GEDCOMUtils.GetMediaTypeVal(GetTagStringValue(MediaTypeTagName())); }
+            set { SetTagStringValue(MediaTypeTagName(), GEDCOMUtils.GetMediaTypeStr(value)); }
         }
 
         protected override void CreateObj(GEDCOMTree owner, GEDCOMObject parent)
         {
             base.CreateObj(owner, parent);
-            this.SetName("FILE");
+            SetName("FILE");
         }
 
         protected virtual string MediaTypeTagName()
@@ -47,78 +47,20 @@ namespace GKCommon.GEDCOM
 
         public void LinkFile(string fileName)
         {
-            this.fStringValue = fileName;
-            this.MultimediaFormat = RecognizeFormat(fileName);
+            fStringValue = fileName;
+            MultimediaFormat = RecognizeFormat(fileName);
         }
 
         public static GEDCOMMultimediaFormat RecognizeFormat(string fileName)
         {
             if (string.IsNullOrEmpty(fileName)) return GEDCOMMultimediaFormat.mfUnknown;
 
-            string ext = FileHelper.GetFileExtension(fileName);
-
-            GEDCOMMultimediaFormat result;
-            if (ext == ".bmp")
-            {
-                result = GEDCOMMultimediaFormat.mfBMP;
-            }
-            else if (ext == ".gif")
-            {
-                result = GEDCOMMultimediaFormat.mfGIF;
-            }
-            else if (ext == ".jpg" || ext == ".jpeg")
-            {
-                result = GEDCOMMultimediaFormat.mfJPG;
-            }
-            else if (ext == ".ole")
-            {
-                result = GEDCOMMultimediaFormat.mfOLE;
-            }
-            else if (ext == ".pcx")
-            {
-                result = GEDCOMMultimediaFormat.mfPCX;
-            }
-            else if (ext == ".tif" || ext == ".tiff")
-            {
-                result = GEDCOMMultimediaFormat.mfTIF;
-            }
-            else if (ext == ".wav")
-            {
-                result = GEDCOMMultimediaFormat.mfWAV;
-            }
-            else if (ext == ".txt")
-            {
-                result = GEDCOMMultimediaFormat.mfTXT;
-            }
-            else if (ext == ".rtf")
-            {
-                result = GEDCOMMultimediaFormat.mfRTF;
-            }
-            else if (ext == ".avi")
-            {
-                result = GEDCOMMultimediaFormat.mfAVI;
-            }
-            else if (ext == ".tga")
-            {
-                result = GEDCOMMultimediaFormat.mfTGA;
-            }
-            else if (ext == ".png")
-            {
-                result = GEDCOMMultimediaFormat.mfPNG;
-            }
-            else if (ext == ".mpg" || ext == ".mpeg")
-            {
-                result = GEDCOMMultimediaFormat.mfMPG;
-            }
-            else if (ext == ".htm" || ext == ".html")
-            {
-                result = GEDCOMMultimediaFormat.mfHTM;
-            }
-            else
-            {
-                result = GEDCOMMultimediaFormat.mfUnknown;
+            string ext = SysUtils.GetFileExtension(fileName);
+            if (!string.IsNullOrEmpty(ext) && ext[0] == '.') {
+                ext = ext.Remove(0, 1);
             }
 
+            GEDCOMMultimediaFormat result = GEDCOMUtils.GetMultimediaFormatVal(ext);
             return result;
         }
 

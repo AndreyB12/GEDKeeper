@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -48,14 +48,15 @@ namespace GKCommon.GEDCOM
         gf_ALTREE,
         gf_AGES,
         gf_PAF,
+        gf_Ahnenblatt,
         
-        gf_Last = gf_PAF
+        gf_Last = gf_Ahnenblatt
     }
 
     public enum GEDCOMCharacterSet
     {
         csASCII,
-        csANSEL,
+        csANSEL, // unsupported
         csUNICODE,
         csUTF8
     }
@@ -96,16 +97,6 @@ namespace GKCommon.GEDCOM
         ntMarried
     }
 
-    /*public enum GEDCOMNamePieceType
-    {
-        nptPrefix,
-        nptGiven,
-        nptNickname,
-        nptSurnamePrefix,
-        nptSurname,
-        nptSuffix
-    }*/
-
     public enum GEDCOMCalendar
     {
         dcGregorian,
@@ -113,6 +104,7 @@ namespace GKCommon.GEDCOM
         dcHebrew,
         dcFrench,
         dcRoman,
+        dcIslamic, // GK+ (nonstandard)
         dcUnknown,
 
         dcLast = dcUnknown
@@ -215,7 +207,8 @@ namespace GKCommon.GEDCOM
 
     public enum GEDCOMMediaType
     {
-        mtNone,
+        mtUnknown,
+
         mtAudio,
         mtBook,
         mtCard,
@@ -229,9 +222,8 @@ namespace GKCommon.GEDCOM
         mtPhoto,
         mtTombstone,
         mtVideo,
-        mtUnknown,
 
-        mtLast = mtUnknown
+        mtLast = mtVideo
     }
 
     public enum GEDCOMMultimediaFormat
@@ -246,17 +238,25 @@ namespace GKCommon.GEDCOM
         mfTGA,
         mfPNG,
         mfRAW,
+        mfPSD,
 
         mfTXT,
         mfRTF,
         mfHTM,
+        mfPDF,
 
         mfWAV,
         mfMP3,
+        mfWMA,
+        mfMKA,
 
         mfAVI,
         mfMPG,
-        mfWMA,
+        mfWMV,
+        mfMP4,
+        mfOGV,
+        mfMKV,
+        mfMOV,
 
         mfOLE,
         mfUnknown

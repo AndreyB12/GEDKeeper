@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -101,7 +101,7 @@ namespace GKCore.Export
             composer.Flush();
         }
 
-        public override object createFont(string name, float size, bool bold, bool underline, System.Drawing.Color color)
+        public override object CreateFont(string name, float size, bool bold, bool underline, System.Drawing.Color color)
         {
             this.requireDocument();
 
@@ -157,6 +157,10 @@ namespace GKCore.Export
         }
 
         public override void addParagraphChunkLink(string text, object font, string link, object linkFont, bool sup)
+        {
+        }
+
+        public override void addNote(string text, object font)
         {
         }
     }

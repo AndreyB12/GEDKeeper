@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -20,6 +20,9 @@
 
 namespace GKCore.Types
 {
+    /// <summary>
+    /// Status display the protected information in lists, pedigrees and graphs.
+    /// </summary>
     public enum ShieldState
     {
         Maximum,

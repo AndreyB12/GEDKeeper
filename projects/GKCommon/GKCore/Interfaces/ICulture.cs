@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,16 +18,31 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
+using GKCommon.GEDCOM;
 
 namespace GKCore.Interfaces
 {
     /// <summary>
-    /// Description of ICulture.
+    /// The main interface to culture-dependent processing of names.
+    /// <br/>
+    /// In most languages, where there is a middle name, it consists of several parts.
+    /// Since we do not introduce a separate field for storage of these parts - 
+    /// we are also not going to control the middle names by the specific flag.
+    /// Similarly for the second surname. Therefore, the corresponding flags are 
+    /// removed and will no longer be used.
     /// </summary>
     public interface ICulture
     {
         bool HasPatronymic();
         bool HasSurname();
+
+        string NormalizeSurname(string sn, bool aFemale);
+        string GetMarriedSurname(string husbSurname);
+        GEDCOMSex GetSex(string iName, string iPat, bool canQuery);
+
+        string[] GetSurnames(string surname, bool female);
+        string[] GetSurnames(GEDCOMIndividualRecord iRec);
+
+        string GetPossessiveName(string name);
     }
 }

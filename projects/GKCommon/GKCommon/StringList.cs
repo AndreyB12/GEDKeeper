@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -27,9 +27,6 @@ namespace GKCommon
     [Serializable]
     public class StringListException : Exception
     {
-        public StringListException()
-        {
-        }
         public StringListException(string message) : base(message)
         {
         }
@@ -48,19 +45,19 @@ namespace GKCommon
     }
 
     /// <summary>
-    /// 
+    /// General container for a list of strings with some additional features.
     /// </summary>
     public sealed class StringList : BaseObject
     {
         private sealed class StringItem
         {
-            public string FString;
-            public object FObject;
-            
+            public string StrVal;
+            public object ObjVal;
+
             public StringItem(string str, object obj)
             {
-                this.FString = str;
-                this.FObject = obj;
+                StrVal = str;
+                ObjVal = obj;
             }
         }
 
@@ -74,59 +71,104 @@ namespace GKCommon
 
         private const string LINE_BREAK = "\r\n";
 
+        public bool CaseSensitive
+        {
+            get {
+                return fCaseSensitive;
+            }
+            set {
+                if (fCaseSensitive != value)
+                {
+                    fCaseSensitive = value;
+                    if (fSorted) Sort();
+                }
+            }
+        }
+
         public int Count
         {
-            get { return this.fList.Count; }
+            get { return fList.Count; }
         }
 
         public string this[int index]
         {
             get {
-                if (index < 0 || index >= this.fList.Count)
+                if (index < 0 || index >= fList.Count)
                     throw new StringListException(string.Format("List index out of bounds ({0})", index));
 
-                return this.fList[index].FString;
+                return fList[index].StrVal;
             }
 
             set {
-                if (this.Sorted)
+                if (fSorted)
                     throw new StringListException("Operation not allowed on sorted list");
 
-                if (index < 0 || index >= this.fList.Count)
+                if (index < 0 || index >= fList.Count)
                     throw new StringListException(string.Format("List index out of bounds ({0})", index));
 
-                this.Changing();
-                this.fList[index].FString = value;
-                this.Changed();
+                Changing();
+                fList[index].StrVal = value;
+                Changed();
+            }
+        }
+
+        public DuplicateSolve DuplicateSolve
+        {
+            get { return fDuplicateSolve; }
+            set { fDuplicateSolve = value; }
+        }
+
+        public event NotifyEventHandler OnChange
+        {
+            add { fOnChange = value; }
+            remove { if (fOnChange == value) fOnChange = null; }
+        }
+
+        public event NotifyEventHandler OnChanging
+        {
+            add { fOnChanging = value; }
+            remove { if (fOnChanging == value) fOnChanging = null; }
+        }
+
+        public bool Sorted
+        {
+            get {
+                return fSorted;
+            }
+            set {
+                if (fSorted != value)
+                {
+                    if (value) Sort();
+                    fSorted = value;
+                }
             }
         }
 
         public string Text
         {
-            get { return this.GetTextStr(); }
-            set { this.SetTextStr(value); }
+            get { return GetTextStr(); }
+            set { SetTextStr(value); }
         }
+
 
         public StringList()
         {
-            this.fList = new List<StringItem>();
+            fList = new List<StringItem>();
         }
 
         public StringList(string str) : this()
         {
-            this.SetTextStr(str);
+            SetTextStr(str);
         }
 
         public StringList(string[] list) : this()
         {
             if (list == null)
-            {
                 throw new ArgumentNullException("list");
-            }
 
             for (int i = 0; i < list.Length; i++)
             {
-                this.AddObject(list[i], null);
+                AddObject(list[i], null);
             }
         }
 
@@ -135,82 +177,44 @@ namespace GKCommon
             if (disposing)
             {
                 //this.fList = null;
+                /*int num = this.fList.Count;
+                for (int i = 0; i < num; i++)
+                {
+                    IDisposable inst = this.fList[i].FObject as IDisposable;
+                    if (inst != null) inst.Dispose();
+                }*/
             }
             base.Dispose(disposing);
         }
 
         public bool IsEmpty()
         {
-            return (this.fList.Count <= 0);
-        }
-
-        public event NotifyEventHandler OnChange
-        {
-            add { this.fOnChange = value; }
-            remove { if (this.fOnChange == value) this.fOnChange = null; }
-        }
-
-        public event NotifyEventHandler OnChanging
-        {
-            add { this.fOnChanging = value; }
-            remove { if (this.fOnChanging == value) this.fOnChanging = null; }
-        }
-
-        public DuplicateSolve DuplicateSolve
-        {
-            get { return this.fDuplicateSolve; }
-            set { this.fDuplicateSolve = value; }
-        }
-
-        public bool Sorted
-        {
-            get {
-                return this.fSorted;
-            }
-            set {
-                if (this.fSorted != value) {
-                    if (value) this.Sort();
-                    this.fSorted = value;
-                }
-            }
-        }
-
-        public bool CaseSensitive
-        {
-            get {
-                return this.fCaseSensitive;
-            }
-            set {
-                if (value != this.fCaseSensitive) {
-                    this.fCaseSensitive = value;
-                    if (this.fSorted) this.Sort();
-                }
-            }
+            return (fList.Count <= 0);
         }
 
         public object GetObject(int index)
         {
-            if (index < 0 || index >= this.fList.Count)
+            if (index < 0 || index >= fList.Count)
                 throw new StringListException(string.Format("List index out of bounds ({0})", index));
 
-            return this.fList[index].FObject;
+            return fList[index].ObjVal;
         }
 
         public void SetObject(int index, object obj)
         {
-            if (index < 0 || index >= this.fList.Count)
+            if (index < 0 || index >= fList.Count)
                 throw new StringListException(string.Format("List index out of bounds ({0})", index));
 
-            this.Changing();
-            this.fList[index].FObject = obj;
-            this.Changed();
+            Changing();
+            fList[index].ObjVal = obj;
+            Changed();
         }
 
         private string GetTextStr()
         {
             StringBuilder buffer = new StringBuilder();
 
-            int num = this.fList.Count;
+            int num = fList.Count;
             for (int i = 0; i < num; i++)
             {
                 buffer.Append(this[i]);
@@ -222,10 +226,10 @@ namespace GKCommon
 
         private void SetTextStr(string value)
         {
-            this.BeginUpdate();
+            BeginUpdate();
             try
             {
-                this.Clear();
+                Clear();
 
                 int start = 0;
                 int lbLen = LINE_BREAK.Length;
@@ -234,7 +238,7 @@ namespace GKCommon
                 while (pos >= 0)
                 {
                     string s = value.Substring(start, pos - start);
-                    this.Add(s);
+                    Add(s);
                     start = pos + lbLen;
                     pos = value.IndexOf(LINE_BREAK, start);
                 }
@@ -242,43 +246,37 @@ namespace GKCommon
                 if (start <= value.Length)
                 {
                     string s = value.Substring(start, (value.Length - start));
-                    this.Add(s);
+                    Add(s);
                 }
             }
             finally
             {
-                this.EndUpdate();
+                EndUpdate();
             }
         }
 
         public int Add(string str)
         {
-            return this.AddObject(str, null);
+            return AddObject(str, null);
         }
 
         public int AddObject(string str, object obj)
         {
             int result;
 
-            if (!this.Sorted)
-            {
-                result = this.fList.Count;
-            }
-            else
-            {
-                if (this.Find(str, out result))
-                {
-                    if (this.fDuplicateSolve == DuplicateSolve.Ignore)
-                    {
+            if (!fSorted) {
+                result = fList.Count;
+            } else {
+                if (Find(str, out result)) {
+                    if (fDuplicateSolve == DuplicateSolve.Ignore)
                         return result;
-                    }
 
-                    if (this.fDuplicateSolve == DuplicateSolve.Error)
+                    if (fDuplicateSolve == DuplicateSolve.Error)
                         throw new StringListException("String list does not allow duplicates");
                 }
             }
 
-            this.InsertItem(result, str, obj);
+            InsertItem(result, str, obj);
 
             return result;
         }
@@ -287,17 +285,17 @@ namespace GKCommon
         {
             if (strList == null) return;
 
-            this.BeginUpdate();
+            BeginUpdate();
             try
             {
                 int num = strList.Count;
                 for (int i = 0; i < num; i++) {
-                    this.AddObject(strList[i], strList.GetObject(i));
+                    AddObject(strList[i], strList.GetObject(i));
                 }
             }
             finally
             {
-                this.EndUpdate();
+                EndUpdate();
             }
         }
 
@@ -305,86 +303,86 @@ namespace GKCommon
         {
             if (source == null) return;
 
-            this.BeginUpdate();
+            BeginUpdate();
             try
             {
-                this.Clear();
-                this.AddStrings(source);
+                Clear();
+                AddStrings(source);
             }
             finally
             {
-                this.EndUpdate();
+                EndUpdate();
             }
         }
 
         public void Clear()
         {
-            if (this.fList.Count == 0) return;
+            if (fList.Count == 0) return;
 
-            this.Changing();
-            this.fList.Clear();
-            this.Changed();
+            Changing();
+            fList.Clear();
+            Changed();
         }
 
         public void Delete(int index)
         {
-            if (index < 0 || index >= this.fList.Count)
+            if (index < 0 || index >= fList.Count)
                 throw new StringListException(string.Format("List index out of bounds ({0})", index));
 
-            this.Changing();
-            if (index < this.fList.Count)
+            Changing();
+            if (index < fList.Count)
             {
-                this.fList.RemoveAt(index);
+                fList.RemoveAt(index);
             }
-            this.Changed();
+            Changed();
         }
 
         public void Exchange(int index1, int index2)
         {
-            if (index1 < 0 || index1 >= this.fList.Count)
+            if (index1 < 0 || index1 >= fList.Count)
                 throw new StringListException(string.Format("List index out of bounds ({0})", index1));
 
-            if (index2 < 0 || index2 >= this.fList.Count)
+            if (index2 < 0 || index2 >= fList.Count)
                 throw new StringListException(string.Format("List index out of bounds ({0})", index2));
 
-            this.Changing();
-            this.ExchangeItems(index1, index2);
-            this.Changed();
+            Changing();
+            ExchangeItems(index1, index2);
+            Changed();
         }
 
         public void Insert(int index, string str)
         {
-            this.InsertObject(index, str, null);
+            InsertObject(index, str, null);
         }
 
         public void InsertObject(int index, string str, object obj)
         {
-            if (this.Sorted)
+            if (fSorted)
                 throw new StringListException("Operation not allowed on sorted list");
 
-            if (index < 0 || index > this.Count)
+            if (index < 0 || index > fList.Count)
                 throw new StringListException(string.Format("List index out of bounds ({0})", index));
 
-            this.InsertItem(index, str, obj);
+            InsertItem(index, str, obj);
         }
 
         private void InsertItem(int index, string str, object obj)
         {
-            this.Changing();
-            this.fList.Insert(index, new StringItem(str, obj));
-            this.Changed();
+            Changing();
+            fList.Insert(index, new StringItem(str, obj));
+            Changed();
         }
 
         public void ExchangeItems(int index1, int index2)
         {
-            StringItem temp = this.fList[index1];
-            this.fList[index1] = this.fList[index2];
-            this.fList[index2] = temp;
+            StringItem temp = fList[index1];
+            fList[index1] = fList[index2];
+            fList[index2] = temp;
         }
 
         public string[] ToArray()
         {
-            int len = this.Count;
+            int len = fList.Count;
             string[] result = new string[len];
             for (int i = 0; i < len; i++) {
                 result[i] = this[i];
@@ -396,47 +394,40 @@ namespace GKCommon
 
         private void SetUpdateState(bool updating)
         {
-            if (updating)
-            {
-                this.Changing();
-            }
-            else
-            {
-                this.Changed();
+            if (updating) {
+                Changing();
+            } else {
+                Changed();
             }
         }
 
         public void BeginUpdate()
         {
-            if (this.fUpdateCount == 0)
-            {
-                this.SetUpdateState(true);
+            if (fUpdateCount == 0) {
+                SetUpdateState(true);
             }
-            this.fUpdateCount++;
+            fUpdateCount++;
         }
 
         public void EndUpdate()
         {
-            this.fUpdateCount--;
-            if (this.fUpdateCount == 0)
-            {
-                this.SetUpdateState(false);
+            fUpdateCount--;
+            if (fUpdateCount == 0) {
+                SetUpdateState(false);
             }
         }
 
         private void Changed()
         {
-            if (this.fUpdateCount == 0 && this.fOnChange != null)
-            {
-                this.fOnChange(this);
+            if (fUpdateCount == 0 && fOnChange != null) {
+                fOnChange(this);
             }
         }
 
         private void Changing()
         {
-            if (this.fUpdateCount == 0 && this.fOnChanging != null)
-            {
-                this.fOnChanging(this);
+            if (fUpdateCount == 0 && fOnChanging != null) {
+                fOnChanging(this);
             }
         }
 
@@ -444,32 +435,11 @@ namespace GKCommon
 
         #region Search
 
-        public int IndexOf(string str)
-        {
-            int result = -1;
-
-            if (!this.Sorted) {
-                int num = this.fList.Count;
-                for (int i = 0; i < num; i++) {
-                    if (this.CompareStrings(this.fList[i].FString, str) == 0) {
-                        result = i;
-                        break;
-                    }
-                }
-            } else {
-                if (!this.Find(str, out result)) {
-                    result = -1;
-                }
-            }
-
-            return result;
-        }
-
         public int IndexOfObject(object obj)
         {
-            int num = this.fList.Count;
+            int num = fList.Count;
             for (int i = 0; i < num; i++) {
-                if (this.fList[i].FObject == obj) {
+                if (fList[i].ObjVal == obj) {
                     return i;
                 }
             }
@@ -477,35 +447,62 @@ namespace GKCommon
             return -1;
         }
 
-        public bool Find(string str, out int index)
+        public int IndexOf(string str)
+        {
+            int result = -1;
+            if (fList.Count <= 0) return result;
+
+            if (!fSorted) {
+                int num = fList.Count;
+                for (int i = 0; i < num; i++) {
+                    if (CompareStrings(fList[i].StrVal, str) == 0) {
+                        result = i;
+                        break;
+                    }
+                }
+            } else {
+                if (!Find(str, out result)) {
+                    result = -1;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Important: `index`, returned by this method, necessary in the
+        /// methods of insertion for sorted lists - even when the search
+        /// string is not found.
+        /// </summary>
+        /// <param name="str"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private bool Find(string str, out int index)
         {
             bool result = false;
 
             int low = 0;
-            int high = this.fList.Count - 1;
-            
-            while (low <= high)
-            {
+            int high = fList.Count - 1;
+
+            while (low <= high) {
                 int idx = (int)((uint)(low + high) >> 1);
-                int cmpRes = this.CompareStrings(this.fList[idx].FString, str);
-                if (cmpRes < 0)
-                {
+                int cmp = CompareStrings(fList[idx].StrVal, str);
+
+                if (cmp < 0) {
                     low = idx + 1;
-                }
-                else
-                {
+                } else {
                     high = idx - 1;
-                    if (cmpRes == 0)
-                    {
+
+                    if (cmp == 0) {
                         result = true;
-                        if (this.fDuplicateSolve != DuplicateSolve.Accept)
-                        {
+
+                        if (fDuplicateSolve != DuplicateSolve.Accept) {
                             low = idx;
                         }
                     }
                 }
             }
-            
+
             index = low;
 
             return result;
@@ -515,76 +512,23 @@ namespace GKCommon
 
         #region Sorting
 
-        private void QuickSort(int left, int right)
+        private int CompareStrings(string s1, string s2)
         {
-            int I;
-            do
-            {
-                I = left;
-                int J = right;
-                int mid = (int)((uint)(left + right) >> 1);
-                while (true)
-                {
-                    if (SCompare(I, mid) >= 0)
-                    {
-                        while (SCompare(J, mid) > 0)
-                        {
-                            J--;
-                        }
-                        if (I <= J)
-                        {
-                            this.ExchangeItems(I, J);
-                            if (mid == I)
-                            {
-                                mid = J;
-                            }
-                            else
-                            {
-                                if (mid == J)
-                                {
-                                    mid = I;
-                                }
-                            }
-                            I++;
-                            J--;
-                        }
-                        if (I > J)
-                        {
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        I++;
-                    }
-                }
-                if (left < J)
-                {
-                    this.QuickSort(left, J);
-                }
-                left = I;
-            }
-            while (I < right);
+            return string.Compare(s1, s2, !fCaseSensitive);
         }
 
-        public int CompareStrings(string s1, string s2)
+        private int CompareItems(StringItem item1, StringItem item2)
         {
-            return string.Compare(s1, s2, !this.fCaseSensitive);
-        }
-
-        public int SCompare(int index1, int index2)
-        {
-            return string.Compare(fList[index1].FString, fList[index2].FString, !this.fCaseSensitive);
+            return string.Compare(item1.StrVal, item2.StrVal, !fCaseSensitive);
         }
 
         public void Sort()
         {
-            if (!this.fSorted && this.fList.Count > 1)
-            {
-                this.Changing();
-                this.QuickSort(0, this.fList.Count - 1);
-                this.Changed();
-            }
+            if (fSorted || fList.Count <= 1) return;
+
+            Changing();
+            SysUtils.QuickSort(fList, CompareItems);
+            Changed();
         }
 
         #endregion

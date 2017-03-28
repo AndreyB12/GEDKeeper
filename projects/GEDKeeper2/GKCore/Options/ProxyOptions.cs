@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,14 +18,16 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using GKCommon;
+using GKCore.Interfaces;
 
 namespace GKCore.Options
 {
     /// <summary>
     /// 
     /// </summary>
-    public sealed class ProxyOptions : BaseObject
+    public sealed class ProxyOptions : BaseObject, IOptions
     {
         public string Server;
         public string Port;
@@ -37,27 +39,41 @@ namespace GKCore.Options
         {
         }
 
+        public void Assign(IOptions source)
+        {
+            ProxyOptions srcOptions = source as ProxyOptions;
+            if (srcOptions == null) return;
+
+            Server = srcOptions.Server;
+            Port = srcOptions.Port;
+            Login = srcOptions.Login;
+            Password = srcOptions.Password;
+            UseProxy = srcOptions.UseProxy;
+        }
+
         public void LoadFromFile(IniFile iniFile)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
-            this.UseProxy = iniFile.ReadBool("Proxy", "UseProxy", false);
-            this.Server = iniFile.ReadString("Proxy", "Server", "");
-            this.Port = iniFile.ReadString("Proxy", "Port", "");
-            this.Login = iniFile.ReadString("Proxy", "Login", "");
-            this.Password = SCCrypt.scDecrypt(iniFile.ReadString("Proxy", "Password", ""), unchecked((ushort)CRC32.CrcStr("GEDKeeper")));
+            UseProxy = iniFile.ReadBool("Proxy", "UseProxy", false);
+            Server = iniFile.ReadString("Proxy", "Server", "");
+            Port = iniFile.ReadString("Proxy", "Port", "");
+            Login = iniFile.ReadString("Proxy", "Login", "");
+            Password = SCCrypt.scDecrypt(iniFile.ReadString("Proxy", "Password", ""), unchecked((ushort)SysUtils.CrcStr("GEDKeeper")));
         }
 
         public void SaveToFile(IniFile iniFile)
         {
-            if (iniFile == null) return;
+            if (iniFile == null)
+                throw new ArgumentNullException("iniFile");
 
-            iniFile.WriteBool("Proxy", "UseProxy", this.UseProxy);
-            iniFile.WriteString("Proxy", "Server", this.Server);
-            iniFile.WriteString("Proxy", "Port", this.Port);
-            iniFile.WriteString("Proxy", "Login", this.Login);
+            iniFile.WriteBool("Proxy", "UseProxy", UseProxy);
+            iniFile.WriteString("Proxy", "Server", Server);
+            iniFile.WriteString("Proxy", "Port", Port);
+            iniFile.WriteString("Proxy", "Login", Login);
 
-            string pw = SCCrypt.scEncrypt(this.Password, unchecked((ushort)CRC32.CrcStr("GEDKeeper")));
+            string pw = SCCrypt.scEncrypt(Password, unchecked((ushort)SysUtils.CrcStr("GEDKeeper")));
             iniFile.WriteString("Proxy", "Password", pw);
         }
     }

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -22,6 +22,9 @@ using System;
 
 namespace GKCore.Interfaces
 {
+    /// <summary>
+    /// The interface for objects that provide localized resources.
+    /// </summary>
     public interface ILangMan
     {
         string LS(Enum lsid);

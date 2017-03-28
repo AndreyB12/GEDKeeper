@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -30,45 +30,32 @@ namespace GKCore.Lists
     /// <summary>
     /// 
     /// </summary>
-    public sealed class ColumnProps
+    public sealed class ListColumn
     {
-        public byte ColType;
-        public bool ColActive;
-        public int ColWidth;
+        public readonly byte Id;
+        public readonly LSID ColName;
+        public readonly DataType DataType;
+        public readonly int DefWidth;
+        public readonly bool DefActive;
+        public readonly string Format;
+        public readonly NumberFormatInfo NumFmt;
 
-        public ColumnProps()
+        public int CurWidth;
+        public bool CurActive;
+        public int Order;
+
+        public ListColumn(byte id, LSID colName, DataType dataType,
+                          int defWidth, bool defActive, string format = null,
+                          NumberFormatInfo numFmt = null)
         {
+            Id = id;
+            ColName = colName;
+            DataType = dataType;
+            DefWidth = defWidth;
+            DefActive = defActive;
+            Format = format;
+            NumFmt = numFmt;
         }
-
-        public ColumnProps(byte colType, bool colActive, int colWidth)
-        {
-            this.ColType = colType;
-            this.ColActive = colActive;
-            this.ColWidth = colWidth;
-        }
-
-        public void Assign(ColumnProps source)
-        {
-            if (source == null) return;
-
-            this.ColType = source.ColType;
-            this.ColActive = source.ColActive;
-            this.ColWidth = source.ColWidth;
-        }
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public sealed class ColumnStatic
-    {
-        //public byte colType;
-        public LSID ColName;
-        public DataType DataType;
-        public NumberFormatInfo NumFmt;
-        public string Format;
-        public int Width;
-        public bool Active;
     }
 
     /// <summary>
@@ -76,157 +63,163 @@ namespace GKCore.Lists
     /// </summary>
     public abstract class ListColumns : IListColumns
     {
-        private List<ColumnProps> fColumns;
-        private Type fColumnsEnum;
+        private readonly List<ListColumn> fColumns;
+        private readonly List<ListColumn> fOrderedColumns;
+        private sbyte fLastId;
 
-        public List<ColumnStatic> ColumnStatics;
 
         public int Count
         {
-            get { return this.fColumns.Count; }
+            get { return fColumns.Count; }
         }
 
-        public ColumnProps this[int index]
+        public ListColumn this[int index]
         {
-            get { return this.fColumns[index]; }
+            get { return fColumns[index]; }
+        }
+
+        public IList<ListColumn> OrderedColumns
+        {
+            get { return fOrderedColumns; }
+        }
+
+
+        protected ListColumns()
+        {
+            fLastId = -1;
+            fColumns = new List<ListColumn>();
+            fOrderedColumns = new List<ListColumn>();
+
+            InitColumnStatics();
+            UpdateOrders();
         }
 
         protected abstract void InitColumnStatics();
 
-        protected ListColumns()
+        public void AddColumn(LSID colName, DataType dataType,
+                              int defWidth, bool defActive,
+                              string format = null, NumberFormatInfo nfi = null)
         {
-            this.ColumnStatics = new List<ColumnStatic>();
-        }
-
-        protected void InitData(Type colEnum)
-        {
-            this.fColumnsEnum = colEnum;
-
-            InitColumnStatics();
-
-            this.fColumns = new List<ColumnProps>();
-            foreach (Enum e in Enum.GetValues(this.fColumnsEnum))
-            {
-                this.fColumns.Add(new ColumnProps());
-            }
+            fLastId += 1;
+            ListColumn cs = new ListColumn((byte)fLastId, colName, dataType, defWidth, defActive, format, nfi);
+            fColumns.Add(cs);
         }
 
         public void ResetDefaults()
         {
-            foreach (Enum e in Enum.GetValues(this.fColumnsEnum))
+            int num = fColumns.Count;
+            for (int i = 0; i < num; i++)
             {
-                byte i = (e as IConvertible).ToByte(null);
+                var cs = fColumns[i];
 
-                ColumnStatic cs = ColumnStatics[i];
-
-                this.fColumns[i] = new ColumnProps(i, cs.Active, cs.Width);
+                cs.Order = i;
+                cs.CurActive = cs.DefActive;
+                cs.CurWidth = cs.DefWidth;
             }
+
+            UpdateOrders();
         }
 
-        public Type GetColumnsEnum()
+        public void CopyTo(IListColumns target)
         {
-            return this.fColumnsEnum;
-        }
+            ListColumns targetColumns = target as ListColumns;
+            if (targetColumns == null)
+                throw new ArgumentNullException("target");
 
-        public void AddStatic(/*Enum colType*/ LSID colName, DataType dataType, int defWidth, bool defActive)
-        {
-            ColumnStatic cs = new ColumnStatic();
-
-            //cs.colType = ((IConvertible)colType).ToByte(null);
-            cs.ColName = colName;
-            cs.DataType = dataType;
-            cs.Width = defWidth;
-            cs.NumFmt = null;
-            cs.Format = null;
-            cs.Active = defActive;
-
-            this.ColumnStatics.Add(cs);
-        }
-
-        public void AddStatic(/*Enum colType*/ LSID colName, DataType dataType, int defWidth, bool defActive, string format, NumberFormatInfo nfi)
-        {
-            ColumnStatic cs = new ColumnStatic();
-
-            //cs.colType = ((IConvertible)colType).ToByte(null);
-            cs.ColName = colName;
-            cs.DataType = dataType;
-            cs.Width = defWidth;
-            cs.NumFmt = nfi;
-            cs.Format = format;
-            cs.Active = defActive;
-
-            this.ColumnStatics.Add(cs);
-        }
-
-        public void CopyTo(IListColumns columns)
-        {
-            ListColumns cols = columns as ListColumns;
-            if (cols == null)
-                throw new ArgumentNullException("columns");
-
-            foreach (Enum e in Enum.GetValues(this.fColumnsEnum))
+            int num = fColumns.Count;
+            for (int i = 0; i < num; i++)
             {
-                byte i = (e as IConvertible).ToByte(null);
+                var srcCol = fColumns[i];
+                var tgtCol = targetColumns.fColumns[i];
 
-                ColumnProps col = this.fColumns[i];
-                cols[i].Assign(col);
+                tgtCol.Order = srcCol.Order;
+                tgtCol.CurActive = srcCol.CurActive;
+                tgtCol.CurWidth = srcCol.CurWidth;
             }
+
+            targetColumns.UpdateOrders();
         }
 
         public void LoadFromFile(IniFile iniFile, string section)
         {
             if (iniFile == null) return;
 
-            foreach (Enum e in Enum.GetValues(this.fColumnsEnum))
+            int num = fColumns.Count;
+            for (int i = 0; i < num; i++)
             {
-                byte i = (e as IConvertible).ToByte(null);
+                int colId = iniFile.ReadInteger(section, "ColType_" + i, i);
 
-                ColumnStatic defCol = ColumnStatics[i];
+                ListColumn col = fColumns[colId];
 
-                ColumnProps col = this.fColumns[i];
-                col.ColType = (byte)iniFile.ReadInteger(section, "ColType_" + i.ToString(), i);
-                col.ColActive = iniFile.ReadBool(section, "ColActive_" + i.ToString(), defCol.Active);
-                col.ColWidth = iniFile.ReadInteger(section, "ColWidth_" + i.ToString(), defCol.Width);
-                
+                bool colActive = iniFile.ReadBool(section, "ColActive_" + i, col.DefActive);
+                int colWidth = iniFile.ReadInteger(section, "ColWidth_" + i, col.DefWidth);
+
                 // protection zero/hidden columns
-                if (col.ColWidth <= 10) {
-                    col.ColWidth = defCol.Width;
+                if (colWidth <= 10) {
+                    colWidth = col.DefWidth;
                 }
-                
-                this.fColumns[i] = col;
+
+                col.Order = i;
+                col.CurActive = colActive;
+                col.CurWidth = colWidth;
             }
+
+            UpdateOrders();
         }
 
         public void SaveToFile(IniFile iniFile, string section)
         {
             if (iniFile == null) return;
 
-            foreach (Enum e in Enum.GetValues(this.fColumnsEnum))
+            int idx = -1;
+            foreach (var col in fOrderedColumns)
             {
-                byte i = (e as IConvertible).ToByte(null);
-
-                iniFile.WriteInteger(section, "ColType_" + i.ToString(), this.fColumns[i].ColType);
-                iniFile.WriteBool(section, "ColActive_" + i.ToString(), this.fColumns[i].ColActive);
-                iniFile.WriteInteger(section, "ColWidth_" + i.ToString(), this.fColumns[i].ColWidth);
+                idx += 1;
+                iniFile.WriteInteger(section, "ColType_" + idx, col.Id);
+                iniFile.WriteBool(section, "ColActive_" + idx, col.CurActive);
+                iniFile.WriteInteger(section, "ColWidth_" + idx, col.CurWidth);
             }
+        }
+
+        private static int CompareItems(ListColumn item1, ListColumn item2)
+        {
+            return item1.Order.CompareTo(item2.Order);
+        }
+
+        public void UpdateOrders()
+        {
+            fOrderedColumns.Clear();
+            foreach (var column in fColumns) fOrderedColumns.Add(column);
+            SysUtils.MergeSort(fOrderedColumns, CompareItems);
         }
 
         public bool MoveColumn(int idx, bool up)
         {
+            ListColumn col1, col2;
+            int tempOrder;
+
             if (up) {
                 if (idx > 0) {
-                    ColumnProps temp = this.fColumns[idx - 1];
-                    this.fColumns[idx - 1] = this.fColumns[idx];
-                    this.fColumns[idx] = temp;
+                    col1 = fOrderedColumns[idx - 1];
+                    col2 = fOrderedColumns[idx];
 
+                    tempOrder = col1.Order;
+                    col1.Order = col2.Order;
+                    col2.Order = tempOrder;
+
+                    UpdateOrders();
                     return true;
                 }
             } else {
-                if (idx >= 0 && idx < this.fColumns.Count - 1) {
-                    ColumnProps temp = this.fColumns[idx + 1];
-                    this.fColumns[idx + 1] = this.fColumns[idx];
-                    this.fColumns[idx] = temp;
+                if (idx >= 0 && idx < fColumns.Count - 1) {
+                    col1 = fOrderedColumns[idx];
+                    col2 = fOrderedColumns[idx + 1];
 
+                    tempOrder = col1.Order;
+                    col1.Order = col2.Order;
+                    col2.Order = tempOrder;
+
+                    UpdateOrders();
                     return true;
                 }
             }

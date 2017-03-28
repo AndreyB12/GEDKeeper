@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -46,9 +46,9 @@ namespace GKCore.Interfaces
         
         public FilterCondition(int columnIndex, ConditionKind condition, object value)
         {
-            this.ColumnIndex = columnIndex;
-            this.Condition = condition;
-            this.Value = value;
+            ColumnIndex = columnIndex;
+            Condition = condition;
+            Value = value;
         }
     }
 
@@ -66,8 +66,8 @@ namespace GKCore.Interfaces
     public interface IListColumns
     {
         void CopyTo(IListColumns columns);
-        Type GetColumnsEnum();
         bool MoveColumn(int idx, bool up);
         void ResetDefaults();
+        void UpdateOrders();
     }
 }

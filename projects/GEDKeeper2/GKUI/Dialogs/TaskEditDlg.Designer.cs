@@ -141,7 +141,7 @@ namespace GKUI.Dialogs
 		    this.cmbGoalType.Name = "cmbGoalType";
 		    this.cmbGoalType.Size = new System.Drawing.Size(158, 25);
 		    this.cmbGoalType.TabIndex = 1;
-		    this.cmbGoalType.SelectedIndexChanged += new System.EventHandler(this.cbGoalType_SelectedIndexChanged);
+		    this.cmbGoalType.SelectedIndexChanged += new System.EventHandler(this.cmbGoalType_SelectedIndexChanged);
 		    // 
 		    // txtGoal
 		    // 
@@ -172,6 +172,7 @@ namespace GKUI.Dialogs
 		    this.btnCancel.TabIndex = 3;
 		    this.btnCancel.Text = "btnCancel";
 		    this.btnCancel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+		    this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
 		    // 
 		    // tabsData
 		    // 

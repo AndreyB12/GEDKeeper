@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,6 +18,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System.IO;
+using GKCommon;
+using GKCommon.GEDCOM;
+
 namespace GKCore.Options
 {
     public sealed class LangRecord
@@ -26,13 +30,17 @@ namespace GKCore.Options
         public readonly string Sign;
         public readonly string Name;
         public readonly string FileName;
+        public readonly GEDCOMLanguageID LangID;
 
         public LangRecord(ushort code, string sign, string name, string fileName)
         {
-            this.Code = code;
-            this.Sign = sign;
-            this.Name = name;
-            this.FileName = fileName;
+            Code = code;
+            Sign = sign;
+            Name = name;
+            FileName = fileName;
+
+            string engLangName = SysUtils.NormalizeName(Path.GetFileNameWithoutExtension(fileName));
+            LangID = GEDCOMLanguage.GetLangID(engLangName);
         }
     }
 }

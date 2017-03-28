@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -19,12 +19,19 @@
  */
 
 using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Windows.Forms;
+
+using GKCommon;
 using GKCommon.Controls;
 using GKCore;
+using GKCore.Interfaces;
 
 namespace GKUI.Charts
 {
-    public abstract class CustomChart : GKScrollableControl
+    public abstract class CustomChart : GKScrollableControl, IPrintable
     {
         private static readonly object EventNavRefresh;
 
@@ -34,46 +41,240 @@ namespace GKUI.Charts
 
         public event EventHandler NavRefresh
         {
-            add { base.Events.AddHandler(CustomChart.EventNavRefresh, value); }
-            remove { base.Events.RemoveHandler(CustomChart.EventNavRefresh, value); }
+            add { Events.AddHandler(EventNavRefresh, value); }
+            remove { Events.RemoveHandler(EventNavRefresh, value); }
         }
 
 
         static CustomChart()
         {
-            CustomChart.EventNavRefresh = new object();
+            EventNavRefresh = new object();
         }
 
         protected CustomChart() : base()
         {
-            this.fNavman = new NavigationStack();
+            fNavman = new NavigationStack();
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (this.fNavman != null) this.fNavman.Dispose();
+                if (fNavman != null) fNavman.Dispose();
             }
             base.Dispose(disposing);
         }
 
+        protected override bool IsInputKey(Keys keyData)
+        {
+            switch (keyData) {
+                case Keys.Left:
+                case Keys.Right:
+                case Keys.Up:
+                case Keys.Down:
+                case Keys.Back:
+                    return true;
+
+                default:
+                    return base.IsInputKey(keyData);
+            }
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            e.Handled = true;
+            switch (e.KeyCode) {
+                case Keys.Left:
+                    HorizontalScroll.Value =
+                        Math.Max(HorizontalScroll.Value - HorizontalScroll.SmallChange, 0);
+                    PerformLayout();
+                    break;
+
+                case Keys.Right:
+                    HorizontalScroll.Value += HorizontalScroll.SmallChange;
+                    PerformLayout();
+                    break;
+
+                case Keys.Up:
+                    VerticalScroll.Value =
+                        Math.Max(VerticalScroll.Value - VerticalScroll.SmallChange, 0);
+                    PerformLayout();
+                    break;
+
+                case Keys.Down:
+                    VerticalScroll.Value += VerticalScroll.SmallChange;
+                    PerformLayout();
+                    break;
+
+                case Keys.PageUp:
+                    if (Keys.None == ModifierKeys) {
+                        VerticalScroll.Value =
+                            Math.Max(VerticalScroll.Value - VerticalScroll.LargeChange, 0);
+                    } else if (Keys.Shift == ModifierKeys) {
+                        HorizontalScroll.Value =
+                            Math.Max(HorizontalScroll.Value - HorizontalScroll.LargeChange, 0);
+                    }
+                    PerformLayout();
+                    break;
+
+                case Keys.PageDown:
+                    if (Keys.None == ModifierKeys) {
+                        VerticalScroll.Value += VerticalScroll.LargeChange;
+                    } else if (Keys.Shift == ModifierKeys) {
+                        HorizontalScroll.Value += HorizontalScroll.LargeChange;
+                    }
+                    PerformLayout();
+                    break;
+
+                case Keys.Home:
+                    if (Keys.None == ModifierKeys) {
+                        VerticalScroll.Value = 0;
+                    } else if (Keys.Shift == ModifierKeys) {
+                        HorizontalScroll.Value = 0;
+                    }
+                    PerformLayout();
+                    break;
+
+                case Keys.End:
+                    if (Keys.None == ModifierKeys) {
+                        VerticalScroll.Value = VerticalScroll.Maximum;
+                    } else if (Keys.Shift == ModifierKeys) {
+                        HorizontalScroll.Value = HorizontalScroll.Maximum;
+                    }
+                    PerformLayout();
+                    break;
+
+                case Keys.Back:
+                    NavPrev();
+                    break;
+
+                default:
+                    base.OnKeyDown(e);
+                    break;
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            if (MouseButtons.XButton1 == e.Button) {
+                NavPrev();
+            } else if (MouseButtons.XButton2 == e.Button) {
+                NavNext();
+            } else {
+                base.OnMouseUp(e);
+            }
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            if (Keys.None == ModifierKeys) {
+                VerticalScroll.Value =
+                    Math.Max(VerticalScroll.Value - e.Delta, 0);
+                PerformLayout();
+            } else if (Keys.Shift == ModifierKeys) {
+                HorizontalScroll.Value =
+                    Math.Max(HorizontalScroll.Value - e.Delta, 0);
+                PerformLayout();
+            }
+            else {
+                base.OnMouseWheel(e);
+            }
+        }
+
+        #region Print and snaphots support
+
+        public abstract Size GetImageSize();
+        public abstract void RenderStaticImage(Graphics gfx, bool printer);
+
+        public bool IsLandscape()
+        {
+            Size imageSize = GetImageSize();
+            return (imageSize.Height < imageSize.Width);
+        }
+
+        public Image GetPrintableImage()
+        {
+            Size imageSize = GetImageSize();
+            var frameRect = new Rectangle(0, 0, imageSize.Width, imageSize.Height);
+
+            Image image;
+            using (var gfx = CreateGraphics()) {
+                image = new Metafile(gfx.GetHdc(), frameRect, MetafileFrameUnit.Pixel, EmfType.EmfOnly);
+            }
+
+            using (Graphics gfx = Graphics.FromImage(image)) {
+                RenderStaticImage(gfx, true);
+            }
+
+            return image;
+        }
+
+        /* TODO(zsv): Need to find an appropriate icon in the general style
+         * for the main toolbar - screenshot capture for windows with charts. */
+        public void SaveSnapshot(string fileName)
+        {
+            string ext = SysUtils.GetFileExtension(fileName);
+
+            Size imageSize = GetImageSize();
+            if ((ext == ".bmp" || ext == ".jpg") && imageSize.Width >= 65535)
+            {
+                GKUtils.ShowError(LangMan.LS(LSID.LSID_TooMuchWidth));
+            }
+            else
+            {
+                ImageFormat imFmt = ImageFormat.Png;
+                if (ext == ".bmp") { imFmt = ImageFormat.Bmp; }
+                else
+                    if (ext == ".emf") { imFmt = ImageFormat.Emf; }
+                else
+                    if (ext == ".png") { imFmt = ImageFormat.Png; }
+                else
+                    if (ext == ".gif") { imFmt = ImageFormat.Gif; }
+                else
+                    if (ext == ".jpg") { imFmt = ImageFormat.Jpeg; }
+
+                Image pic;
+                if (Equals(imFmt, ImageFormat.Emf)) {
+                    using (var gfx = CreateGraphics()) {
+                        pic = new Metafile(fileName, gfx.GetHdc());
+                    }
+                } else {
+                    pic = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format24bppRgb);
+                }
+
+                try
+                {
+                    using (Graphics gfx = Graphics.FromImage(pic)) {
+                        RenderStaticImage(gfx, false);
+                    }
+
+                    pic.Save(fileName, imFmt);
+                }
+                finally
+                {
+                    pic.Dispose();
+                }
+            }
+        }
+
+        #endregion
+
+        #region Navigation support
+
         private void DoNavRefresh()
         {
-            EventHandler eventHandler = (EventHandler)base.Events[CustomChart.EventNavRefresh];
+            var eventHandler = (EventHandler)Events[EventNavRefresh];
             if (eventHandler == null) return;
 
             eventHandler(this, null);
         }
 
-
         protected abstract void SetNavObject(object obj);
-
 
         public bool NavAdd(object obj)
         {
-            if (obj != null && !this.fNavman.Busy) {
-                this.fNavman.Current = obj;
+            if (obj != null && !fNavman.Busy) {
+                fNavman.Current = obj;
                 return true;
             }
             return false;
@@ -81,44 +282,83 @@ namespace GKUI.Charts
 
         public bool NavCanBackward()
         {
-            return this.fNavman.CanBackward();
+            return fNavman.CanBackward();
         }
 
         public bool NavCanForward()
         {
-            return this.fNavman.CanForward();
+            return fNavman.CanForward();
         }
 
         public void NavNext()
         {
-            if (!this.fNavman.CanForward()) return;
+            if (!fNavman.CanForward()) return;
 
-            this.fNavman.BeginNav();
+            fNavman.BeginNav();
             try
             {
-                this.SetNavObject(this.fNavman.Next());
-                this.DoNavRefresh();
+                SetNavObject(fNavman.Next());
+                DoNavRefresh();
             }
             finally
             {
-                this.fNavman.EndNav();
+                fNavman.EndNav();
             }
         }
 
         public void NavPrev()
         {
-            if (!this.fNavman.CanBackward()) return;
+            if (!fNavman.CanBackward()) return;
 
-            this.fNavman.BeginNav();
+            fNavman.BeginNav();
             try
             {
-                this.SetNavObject(this.fNavman.Back());
-                this.DoNavRefresh();
+                SetNavObject(fNavman.Back());
+                DoNavRefresh();
             }
             finally
             {
-                this.fNavman.EndNav();
+                fNavman.EndNav();
             }
         }
+
+        #endregion
+
+        #region Static drawing methods
+
+        internal static void CreateCircleSegment(GraphicsPath path,
+                                                 float inRad, float extRad, float wedgeAngle,
+                                                 float ang1, float ang2)
+        {
+            CreateCircleSegment(path, 0, 0, inRad, extRad, wedgeAngle, ang1, ang2);
+        }
+
+        internal static void CreateCircleSegment(GraphicsPath path, int ctX, int ctY,
+                                                 float inRad, float extRad, float wedgeAngle,
+                                                 float ang1, float ang2)
+        {
+            float angval1 = (float)(ang1 * Math.PI / 180.0f);
+            float px1 = ctX + (float)(inRad * Math.Cos(angval1));
+            float py1 = ctY + (float)(inRad * Math.Sin(angval1));
+            float px2 = ctX + (float)(extRad * Math.Cos(angval1));
+            float py2 = ctY + (float)(extRad * Math.Sin(angval1));
+            float angval2 = (float)(ang2 * Math.PI / 180.0f);
+            float nx1 = ctX + (float)(inRad * Math.Cos(angval2));
+            float ny1 = ctY + (float)(inRad * Math.Sin(angval2));
+            float nx2 = ctX + (float)(extRad * Math.Cos(angval2));
+            float ny2 = ctY + (float)(extRad * Math.Sin(angval2));
+
+            float ir2 = inRad * 2.0f;
+            float er2 = extRad * 2.0f;
+
+            path.StartFigure();
+            path.AddLine(px2, py2, px1, py1);
+            if (0 < ir2) path.AddArc(ctX - inRad, ctY - inRad, ir2, ir2, ang1, wedgeAngle);
+            path.AddLine(nx1, ny1, nx2, ny2);
+            path.AddArc(ctX - extRad, ctY - extRad, er2, er2, ang2, -wedgeAngle);
+            path.CloseFigure();
+        }
+
+        #endregion
     }
 }

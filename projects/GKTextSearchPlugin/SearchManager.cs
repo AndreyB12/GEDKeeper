@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -33,253 +33,270 @@ namespace GKTextSearchPlugin
     /// 
     /// </summary>
     public class SearchManager
-	{
-		private readonly object xdbLock;
-		private readonly Plugin fPlugin;
+    {
+        private readonly object fLock;
+        private readonly Plugin fPlugin;
 
-		public SearchManager(Plugin plugin)
-		{
-			this.fPlugin = plugin;
-            this.xdbLock = new object();
-		}
+        public SearchManager(Plugin plugin)
+        {
+            fPlugin = plugin;
+            fLock = new object();
+        }
 
-		#region Private methods
-		
-		private static string GetSign(IBaseWindow aBase)
-		{
-			return Path.GetFileNameWithoutExtension(aBase.Tree.FileName);
-		}
+        #region Private methods
+        
+        private static string GetSign(IBaseWindow baseWin)
+        {
+            return Path.GetFileNameWithoutExtension(baseWin.Tree.FileName);
+        }
 
-		private static bool IsIndexedRecord(GEDCOMRecord rec)
-		{
-			return !((rec is GEDCOMLocationRecord || rec is GEDCOMGroupRecord));
-		}
+        private static bool IsIndexedRecord(GEDCOMRecord rec)
+        {
+            return !((rec is GEDCOMLocationRecord || rec is GEDCOMGroupRecord));
+        }
 
-		private static void SetDBLastChange(IBaseWindow aBase, WritableDatabase database)
-		{
-			string dbLastchange = aBase.Tree.Header.TransmissionDateTime.ToString("yyyy.MM.dd HH:mm:ss", null);
-			database.SetMetadata(GetSign(aBase), dbLastchange);
-		}
+        private static void SetDBLastChange(IBaseWindow baseWin, WritableDatabase database)
+        {
+            string dbLastchange = baseWin.Tree.Header.TransmissionDateTime.ToString("yyyy.MM.dd HH:mm:ss", null);
+            database.SetMetadata(GetSign(baseWin), dbLastchange);
+        }
 
-		private string GetXDBFolder()
-		{
-			string xdbDir = fPlugin.Host.GetAppDataPath() + "xdb";
-			if (!Directory.Exists(xdbDir)) Directory.CreateDirectory(xdbDir);
-			return xdbDir;
-		}
+        private string GetXDBFolder()
+        {
+            string xdbDir = fPlugin.Host.GetAppDataPath() + "xdb";
+            if (!Directory.Exists(xdbDir)) Directory.CreateDirectory(xdbDir);
+            return xdbDir;
+        }
 
-		private static uint FindDocId(IBaseWindow aBase, WritableDatabase database, string xref)
-		{
-			uint result;
+        private static uint FindDocId(IBaseWindow baseWin, WritableDatabase database, string xref)
+        {
+            uint result;
 
-			string key = "Q" + GetSign(aBase) + "_" + xref;
+            string key = "Q" + GetSign(baseWin) + "_" + xref;
 
-			PostingIterator p = database.PostListBegin(key);
-			if (p == database.PostListEnd(key)) {
-				result = 0; // 0 - is invalid docid (see XapianManual)
-			} else {
-				result = p.GetDocId();
-			}
+            using (PostingIterator p = database.PostListBegin(key)) {
+                if (p == database.PostListEnd(key)) {
+                    result = 0; // 0 - is invalid docid (see XapianManual)
+                } else {
+                    result = p.GetDocId();
+                }
+            }
 
-			return result;
-		}
+            return result;
+        }
 
-		private static void SetDocumentContext(IBaseWindow aBase, Document doc, TermGenerator indexer, GEDCOMRecord rec)
-		{
-			StringList ctx = aBase.GetRecordContent(rec);
-			string recLastchange = rec.ChangeDate.ToString();
-			string baseSign = GetSign(aBase);
+        private static bool SetDocumentContext(IBaseWindow baseWin, Document doc, TermGenerator indexer, GEDCOMRecord rec)
+        {
+            StringList ctx = baseWin.GetRecordContent(rec);
+            if (ctx == null) return false;
 
-			doc.SetData(rec.XRef);							// not edit: for link from search results to gedcom-base
-			doc.AddTerm("Q" + baseSign + "_" + rec.XRef);	// not edit: specific db_rec_id - for FindDocId()
-			doc.AddValue(0, recLastchange);				    // not edit: for update check
-			doc.AddBooleanTerm("GDB" + baseSign);			// not edit: for filtering by database in Search()
+            string recLastchange = rec.ChangeDate.ToString();
+            string baseSign = GetSign(baseWin);
 
-			indexer.SetDocument(doc);
-			indexer.IndexText(ctx.Text);
-		}
+            doc.SetData(rec.XRef);							// not edit: for link from search results to gedcom-base
+            doc.AddTerm("Q" + baseSign + "_" + rec.XRef);	// not edit: specific db_rec_id - for FindDocId()
+            doc.AddValue(0, recLastchange);				    // not edit: for update check
+            doc.AddBooleanTerm("GDB" + baseSign);			// not edit: for filtering by database in Search()
 
-		private static void ReindexRecord(IBaseWindow aBase, WritableDatabase database, TermGenerator indexer, GEDCOMRecord record)
-		{
-			uint docid = FindDocId(aBase, database, record.XRef);
+            indexer.SetDocument(doc);
+            indexer.IndexText(ctx.Text);
 
-			if (docid != 0) {
-				// checking for needed updates
-				string recLastchange = record.ChangeDate.ToString();
+            return true;
+        }
 
-				Document curDoc = database.GetDocument(docid);
-				string docLastchange = curDoc.GetValue(0);
+        private static void ReindexRecord(IBaseWindow baseWin, WritableDatabase database, TermGenerator indexer, GEDCOMRecord record)
+        {
+            uint docid = FindDocId(baseWin, database, record.XRef);
 
-				// updating a record
-				if (!string.Equals(recLastchange, docLastchange)) {
-					using (Document doc = new Document())
-					{
-						SetDocumentContext(aBase, doc, indexer, record);
-						database.ReplaceDocument(docid, doc);
-					}
-				}
-			} else {
-				// only adding
-				using (Document doc = new Document())
-				{
-					SetDocumentContext(aBase, doc, indexer, record);
-					database.AddDocument(doc);
-				}
-			}
-		}
+            if (docid != 0) {
+                // checking for needed updates
+                string recLastchange = record.ChangeDate.ToString();
+                string docLastchange;
 
-		#endregion
+                using (Document curDoc = database.GetDocument(docid)) {
+                    docLastchange = curDoc.GetValue(0);
+                }
 
-		public void ReindexBase(IBaseWindow aBase)
-		{
-		    if (aBase == null) return;
+                // updating a record
+                if (!string.Equals(recLastchange, docLastchange)) {
+                    using (Document doc = new Document())
+                    {
+                        if (SetDocumentContext(baseWin, doc, indexer, record))
+                            database.ReplaceDocument(docid, doc);
+                    }
+                }
+            } else {
+                // only adding
+                using (Document doc = new Document())
+                {
+                    if (SetDocumentContext(baseWin, doc, indexer, record))
+                        database.AddDocument(doc);
+                }
+            }
+        }
 
-			try
-			{
-				lock (xdbLock)
-        		{
-					using (WritableDatabase database = new WritableDatabase(GetXDBFolder(), Xapian.Xapian.DB_CREATE_OR_OPEN))
-					using (TermGenerator indexer = new TermGenerator())
-					using (Stem stemmer = new Stem("russian"))
-					{
-						indexer.SetStemmer(stemmer);
+        #endregion
 
-						aBase.ProgressInit(fPlugin.LangMan.LS(TLS.LSID_SearchIndexRefreshing), aBase.Tree.RecordsCount);
-						int num = aBase.Tree.RecordsCount - 1;
-						for (int i = 0; i <= num; i++)
-						{
-							GEDCOMRecord record = aBase.Tree[i];
-							if (IsIndexedRecord(record)) ReindexRecord(aBase, database, indexer, record);
+        public void ReindexBase(IBaseWindow baseWin)
+        {
+            if (baseWin == null) return;
 
-							aBase.ProgressStep();
-						}
-						aBase.ProgressDone();
+            try
+            {
+                lock (fLock)
+                {
+                    using (WritableDatabase database = new WritableDatabase(GetXDBFolder(), Xapian.Xapian.DB_CREATE_OR_OPEN))
+                        using (TermGenerator indexer = new TermGenerator())
+                            using (Stem stemmer = new Stem("russian"))
+                    {
+                        indexer.SetStemmer(stemmer);
 
-						SetDBLastChange(aBase, database);
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				aBase.Host.LogWrite("SearchManager.ReindexBase(): " + ex.Message);
-			}
-		}
+                        baseWin.ProgressInit(fPlugin.LangMan.LS(TLS.LSID_SearchIndexRefreshing), baseWin.Tree.RecordsCount);
+                        int num = baseWin.Tree.RecordsCount;
+                        for (int i = 0; i < num; i++)
+                        {
+                            GEDCOMRecord record = baseWin.Tree[i];
+                            if (IsIndexedRecord(record)) ReindexRecord(baseWin, database, indexer, record);
 
-		public void UpdateRecord(IBaseWindow aBase, GEDCOMRecord record)
-		{
-			if (record == null || !IsIndexedRecord(record)) return;
+                            baseWin.ProgressStep();
+                        }
+                        baseWin.ProgressDone();
 
-			try
-			{
-				lock (xdbLock)
-        		{
-					using (WritableDatabase database = new WritableDatabase(GetXDBFolder(), Xapian.Xapian.DB_CREATE_OR_OPEN))
-					using (TermGenerator indexer = new TermGenerator())
-					using (Stem stemmer = new Stem("russian"))
-					{
-						indexer.SetStemmer(stemmer);
+                        SetDBLastChange(baseWin, database);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                baseWin.Host.LogWrite("SearchManager.ReindexBase(): " + ex.Message);
+            }
+        }
 
-						ReindexRecord(aBase, database, indexer, record);
-						SetDBLastChange(aBase, database);
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				aBase.Host.LogWrite("SearchManager.UpdateRecord(): " + ex.Message);
-			}
-		}
+        public void UpdateRecord(IBaseWindow baseWin, GEDCOMRecord record)
+        {
+            if (baseWin == null)
+                throw new ArgumentNullException("baseWin");
 
-		public void DeleteRecord(IBaseWindow aBase, string xref)
-		{
-			try
-			{
-				lock (xdbLock)
-        		{
-					using (WritableDatabase database = new WritableDatabase(GetXDBFolder(), Xapian.Xapian.DB_CREATE_OR_OPEN))
-					{
-						uint docid = FindDocId(aBase, database, xref);
-						if (docid != 0) {
-							database.DeleteDocument(docid);
-							SetDBLastChange(aBase, database);
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				aBase.Host.LogWrite("SearchManager.DeleteRecord(): " + ex.Message);
-			}
-		}
+            if (record == null || !IsIndexedRecord(record)) return;
 
-		public class SearchEntry
-		{
-			public string XRef;
-			public uint Rank;
-			public int Percent;
-		}
+            try
+            {
+                lock (fLock)
+                {
+                    using (WritableDatabase database = new WritableDatabase(GetXDBFolder(), Xapian.Xapian.DB_CREATE_OR_OPEN))
+                        using (TermGenerator indexer = new TermGenerator())
+                            using (Stem stemmer = new Stem("russian"))
+                    {
+                        indexer.SetStemmer(stemmer);
 
-		public List<SearchEntry> Search(IBaseWindow aBase, string searchText)
-		{
+                        ReindexRecord(baseWin, database, indexer, record);
+                        SetDBLastChange(baseWin, database);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                baseWin.Host.LogWrite("SearchManager.UpdateRecord(): " + ex.Message);
+            }
+        }
+
+        public void DeleteRecord(IBaseWindow baseWin, string xref)
+        {
+            if (baseWin == null)
+                throw new ArgumentNullException("baseWin");
+
+            try
+            {
+                lock (fLock)
+                {
+                    using (WritableDatabase database = new WritableDatabase(GetXDBFolder(), Xapian.Xapian.DB_CREATE_OR_OPEN))
+                    {
+                        uint docid = FindDocId(baseWin, database, xref);
+                        if (docid != 0) {
+                            database.DeleteDocument(docid);
+                            SetDBLastChange(baseWin, database);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                baseWin.Host.LogWrite("SearchManager.DeleteRecord(): " + ex.Message);
+            }
+        }
+
+        public class SearchEntry
+        {
+            public string XRef;
+            public uint Rank;
+            public int Percent;
+        }
+
+        public List<SearchEntry> Search(IBaseWindow baseWin, string searchText)
+        {
+            if (baseWin == null)
+                throw new ArgumentNullException("baseWin");
+
             const uint flags = (uint)(QueryParser.feature_flag.FLAG_PARTIAL | QueryParser.feature_flag.FLAG_WILDCARD |
                                       QueryParser.feature_flag.FLAG_PHRASE | QueryParser.feature_flag.FLAG_BOOLEAN |
                                       QueryParser.feature_flag.FLAG_LOVEHATE);
             
             List<SearchEntry> res = new List<SearchEntry>();
 
-			try
-			{
-				lock (xdbLock)
-				{
-					using (Database database = new Database(GetXDBFolder()))
-					using (Enquire enquire = new Enquire(database))
-					using (Stem stemmer = new Stem("russian"))
-					using (QueryParser qp = new QueryParser())
-					{
-						qp.SetStemmer(stemmer);
-						qp.SetDatabase(database);
-						qp.SetDefaultOp(Query.op.OP_AND);
-						qp.SetStemmingStrategy(QueryParser.stem_strategy.STEM_SOME);
+            try
+            {
+                lock (fLock)
+                {
+                    using (Database database = new Database(GetXDBFolder()))
+                        using (Enquire enquire = new Enquire(database))
+                            using (Stem stemmer = new Stem("russian"))
+                                using (QueryParser qp = new QueryParser())
+                    {
+                        qp.SetStemmer(stemmer);
+                        qp.SetDatabase(database);
+                        qp.SetDefaultOp(Query.op.OP_AND);
+                        qp.SetStemmingStrategy(QueryParser.stem_strategy.STEM_SOME);
 
-						string qs = searchText + " ged:" + GetSign(aBase);
-						qp.AddBooleanPrefix("ged", "GDB");
+                        string qs = searchText + " ged:" + GetSign(baseWin);
+                        qp.AddBooleanPrefix("ged", "GDB");
 
-						using (Query query = qp.ParseQuery(qs, flags))
-						{
-							enquire.SetQuery(query);
+                        using (Query query = qp.ParseQuery(qs, flags))
+                        {
+                            enquire.SetQuery(query);
 
-							using (MSet matches = enquire.GetMSet(0, 100))
-							{
-								MSetIterator m = matches.Begin();
-								while (m != matches.End())
-								{
-									try
-									{
-										SearchEntry entry = new SearchEntry();
-										entry.XRef = m.GetDocument().GetData();
-										entry.Rank = m.GetRank()+1;
-										entry.Percent = m.GetPercent();
-										res.Add(entry);
-									}
-									catch (Exception ex)
-									{
-										aBase.Host.LogWrite("SearchManager.Search(): " + ex.Message);
-									}
+                            using (MSet matches = enquire.GetMSet(0, 100))
+                            {
+                                MSetIterator m = matches.Begin();
+                                while (m != matches.End())
+                                {
+                                    try
+                                    {
+                                        using (Document mDoc = m.GetDocument()) {
+                                            SearchEntry entry = new SearchEntry();
+                                            entry.XRef = mDoc.GetData();
+                                            entry.Rank = m.GetRank()+1;
+                                            entry.Percent = m.GetPercent();
+                                            res.Add(entry);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        baseWin.Host.LogWrite("SearchManager.Search(): " + ex.Message);
+                                    }
 
-									m = m.Next();
-								}
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				aBase.Host.LogWrite("SearchManager.Search(): " + ex.Message);
-			}
+                                    m = m.Next();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                baseWin.Host.LogWrite("SearchManager.Search(): " + ex.Message);
+            }
 
-			return res;
-		}
-
-	}
+            return res;
+        }
+    }
 }

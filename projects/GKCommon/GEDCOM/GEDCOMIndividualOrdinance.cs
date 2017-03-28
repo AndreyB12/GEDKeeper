@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,68 +25,67 @@ namespace GKCommon.GEDCOM
     {
         public GEDCOMDateValue Date
         {
-            get { return base.TagClass("DATE", GEDCOMDateValue.Create) as GEDCOMDateValue; }
+            get { return TagClass("DATE", GEDCOMDateValue.Create) as GEDCOMDateValue; }
         }
 
         public string TempleCode
         {
-            get { return base.GetTagStringValue("TEMP"); }
-            set { base.SetTagStringValue("TEMP", value); }
+            get { return GetTagStringValue("TEMP"); }
+            set { SetTagStringValue("TEMP", value); }
         }
 
-        public string Place
+        public GEDCOMPlace Place
         {
-            get { return base.GetTagStringValue("PLAC"); }
-            set { base.SetTagStringValue("PLAC", value); }
+            get { return TagClass("PLAC", GEDCOMPlace.Create) as GEDCOMPlace; }
         }
 
         public GEDCOMBaptismDateStatus BaptismDateStatus
         {
-            get { return GEDCOMUtils.GetBaptismDateStatusVal(base.GetTagStringValue("STAT")); }
-            set { base.SetTagStringValue("STAT", GEDCOMUtils.GetBaptismDateStatusStr(value)); }
+            get { return GEDCOMUtils.GetBaptismDateStatusVal(GetTagStringValue("STAT")); }
+            set { SetTagStringValue("STAT", GEDCOMUtils.GetBaptismDateStatusStr(value)); }
         }
 
         public GEDCOMDateExact BaptismChangeDate
         {
-            get { return this.GetChangeDate(); }
+            get { return GetChangeDate(); }
         }
 
         public GEDCOMEndowmentDateStatus EndowmentDateStatus
         {
-            get { return GEDCOMUtils.GetEndowmentDateStatusVal(base.GetTagStringValue("STAT")); }
-            set { base.SetTagStringValue("STAT", GEDCOMUtils.GetEndowmentDateStatusStr(value)); }
+            get { return GEDCOMUtils.GetEndowmentDateStatusVal(GetTagStringValue("STAT")); }
+            set { SetTagStringValue("STAT", GEDCOMUtils.GetEndowmentDateStatusStr(value)); }
         }
 
         public GEDCOMDateExact EndowmentChangeDate
         {
-            get { return this.GetChangeDate(); }
+            get { return GetChangeDate(); }
         }
 
         public GEDCOMPointer Family
         {
-            get { return base.TagClass("FAMC", GEDCOMPointer.Create) as GEDCOMPointer; }
+            get { return TagClass("FAMC", GEDCOMPointer.Create) as GEDCOMPointer; }
         }
 
         public GEDCOMChildSealingDateStatus ChildSealingDateStatus
         {
-            get { return GEDCOMUtils.GetChildSealingDateStatusVal(base.GetTagStringValue("STAT")); }
-            set { base.SetTagStringValue("STAT", GEDCOMUtils.GetChildSealingDateStatusStr(value)); }
+            get { return GEDCOMUtils.GetChildSealingDateStatusVal(GetTagStringValue("STAT")); }
+            set { SetTagStringValue("STAT", GEDCOMUtils.GetChildSealingDateStatusStr(value)); }
         }
 
         public GEDCOMDateExact ChildSealingChangeDate
         {
-            get { return this.GetChangeDate(); }
+            get { return GetChangeDate(); }
         }
 
 
         private GEDCOMDateExact GetChangeDate()
         {
-            return this.DateStatus.TagClass("CHAN", GEDCOMDateExact.Create) as GEDCOMDateExact;
+            return DateStatus.TagClass("CHAN", GEDCOMDateExact.Create) as GEDCOMDateExact;
         }
 
         public GEDCOMDateStatus DateStatus
         {
-            get { return base.TagClass("STAT", GEDCOMDateStatus.Create) as GEDCOMDateStatus; }
+            get { return TagClass("STAT", GEDCOMDateStatus.Create) as GEDCOMDateStatus; }
         }
 
         public override GEDCOMTag AddTag(string tagName, string tagValue, TagConstructor tagConstructor)
@@ -97,13 +96,9 @@ namespace GKCommon.GEDCOM
             {
                 result = base.AddTag(tagName, tagValue, GEDCOMDateStatus.Create);
             }
-            else if (tagName == "FAMC")
-            {
-                result = base.AddTag(tagName, tagValue, GEDCOMPointer.Create);
-            }
             else
             {
-                // define "DATE" by default
+                // define "DATE", "FAMC" by default
                 result = base.AddTag(tagName, tagValue, tagConstructor);
             }
 

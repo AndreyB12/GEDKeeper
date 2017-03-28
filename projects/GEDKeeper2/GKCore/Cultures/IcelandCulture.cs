@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,26 +18,23 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using GKCore.Interfaces;
-
 namespace GKCore.Cultures
 {
     /// <summary>
     /// 
     /// </summary>
-    public class IcelandCulture : ICulture
+    public sealed class IcelandCulture : DefaultCulture
     {
         public IcelandCulture()
         {
         }
 
-        public bool HasPatronymic()
+        public override bool HasPatronymic()
         {
             return true;
         }
 
-        public bool HasSurname()
+        public override bool HasSurname()
         {
             return false; // doesn't exist and is prohibited by law from July 27, 1925
         }

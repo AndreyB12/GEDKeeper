@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,29 +18,40 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System.Drawing;
 using GKCore.Types;
 
 namespace GKCore
 {
-    public struct PluginInfo
-    {
-        public string Title;
-        public string Description;
-        public string Copyright;
-        public string Version;
-    }
-    
     /// <summary>
-    /// 
+    /// Global container for various constants.
     /// </summary>
     public static class GKData
     {
+        // Until the next major version, we cannot change this line,
+        // because it including defines the path to the profile of the program.
         public const string APP_TITLE = "GEDKeeper2";
+
         public const string APP_MAIL = "gedkeeper@yandex.ru";
+
+        public const int APP_FORMAT_DEFVER = 39; // don't change it!
+        public const int APP_FORMAT_CURVER = 40;
 
         public const string GEDCOM_EXT = "ged";
         public const string GEDCOM_SEC_EXT = "geds";
         public const string LUA_EXT = "lua";
+
+        public const int NOTE_NAME_MAX_LENGTH = 64;
+
+        public const string GAPI_KEY = "AIzaSyCebJC5BpniJtRaJCSEl3tXdFy3KhbV5hk";
+
+        #if __MonoCS__
+        public static readonly Color HighlightUnparentedColor = Color.FromArgb(unchecked((int)0xFFFFCACA));
+        public static readonly Color HighlightUnmarriedColor = Color.FromArgb(unchecked((int)0xFFFFFFA1));
+        #else
+        public static readonly Color HighlightUnparentedColor = Color.FromArgb(0xFFCACA);
+        public static readonly Color HighlightUnmarriedColor = Color.FromArgb(0xFFFFA1);
+        #endif
 
         public struct SexStruct
         {
@@ -48,8 +59,8 @@ namespace GKCore
             public string Sign;
 
             public SexStruct(LSID name, string sign) {
-                this.NameId = name;
-                this.Sign = sign;
+                NameId = name;
+                Sign = sign;
             }
         }
 
@@ -57,10 +68,10 @@ namespace GKCore
         {
             public LSID Name;
             public string StatSign;
-            
+
             public MarStatusStruct(LSID name, string sign) {
-                this.Name = name;
-                this.StatSign = sign;
+                Name = name;
+                StatSign = sign;
             }
         }
 
@@ -69,11 +80,11 @@ namespace GKCore
             public LSID Name;
             public string Sign;
             public PersonEventKind Kind;
-            
+
             public PersonEventStruct(LSID name, string sign, PersonEventKind kind) {
-                this.Name = name;
-                this.Sign = sign;
-                this.Kind = kind;
+                Name = name;
+                Sign = sign;
+                Kind = kind;
             }
         }
 
@@ -81,10 +92,10 @@ namespace GKCore
         {
             public LSID Name;
             public byte Dates;
-            
+
             public DateKindStruct(LSID name, byte dates) {
-                this.Name = name;
-                this.Dates = dates;
+                Name = name;
+                Dates = dates;
             }
         }
 
@@ -92,10 +103,23 @@ namespace GKCore
         {
             public LSID Name;
             public string Sign;
-            
+
             public FamilyEventStruct(LSID name, string sign) {
-                this.Name = name;
-                this.Sign = sign;
+                Name = name;
+                Sign = sign;
+            }
+        }
+
+        public struct CalendarStruct
+        {
+            public LSID Name;
+            public string Sign;
+            public bool HasSupport;
+
+            public CalendarStruct(LSID name, string sign, bool hasSupport) {
+                Name = name;
+                Sign = sign;
+                HasSupport = hasSupport;
             }
         }
 
@@ -103,10 +127,10 @@ namespace GKCore
         {
             public LSID Name;
             public string Sign;
-            
+
             public StoreTypeRec(LSID name, string sign) {
-                this.Name = name;
-                this.Sign = sign;
+                Name = name;
+                Sign = sign;
             }
         }
 
@@ -116,8 +140,8 @@ namespace GKCore
             public LSID Cap;
 
             public StatsTitleStruct(LSID title, LSID cap) {
-                this.Title = title;
-                this.Cap = cap;
+                Title = title;
+                Cap = cap;
             }
         }
 
@@ -128,7 +152,7 @@ namespace GKCore
         public static readonly MarStatusStruct[] MarriageStatus;
         public static readonly PersonEventStruct[] PersonEvents;
         public static readonly DateKindStruct[] DateKinds;
-        public static readonly LSID[] DateCalendars;
+        public static readonly CalendarStruct[] DateCalendars;
         public static readonly FamilyEventStruct[] FamilyEvents;
         public static readonly StoreTypeRec[] GKStoreTypes;
         public static readonly LSID[] MediaTypes;
@@ -143,14 +167,19 @@ namespace GKCore
         public static readonly string[] RelationSigns;
         public static readonly string[] Numerals;
         public static readonly string[] NumKinship;
+        public static readonly LSID GreatPrefix;
         public static readonly StatsTitleStruct[] StatsTitles;
         public static readonly LSID[] CheckSolveNames;
-        public static readonly string[] CondSigns;
         public static readonly LSID[] NameTypes;
-        public static readonly string[] Calendars;
+
+        public static string[] CondSigns;
+        public static string BloodGroups;
 
         static GKData()
         {
+            GreatPrefix = LSID.LSID_RK_GreatPrefix;
+
+            // TODO: need to find a way of localization
             NumKinship = new string[]
             {
                 "-",
@@ -159,6 +188,7 @@ namespace GKCore
                 ""
             };
 
+            // TODO: need to find a way of localization
             Numerals = new string[]
             {
                 "-",
@@ -190,6 +220,10 @@ namespace GKCore
                 "Gd",
                 "Br",
                 "St",
+                "-",
+                "-",
+                "-",
+                "-",
                 "-",
                 "-",
                 "-",
@@ -236,12 +270,17 @@ namespace GKCore
                 LSID.LSID_RK_Niece,
                 LSID.LSID_RK_CousinM,
                 LSID.LSID_RK_CousinF,
+                LSID.LSID_RK_BrotherInLaw_H,
+                LSID.LSID_RK_SisterInLaw_H,
+                LSID.LSID_RK_BrotherInLaw_W,
+                LSID.LSID_RK_SisterInLaw_W,
                 LSID.LSID_None,
                 LSID.LSID_RK_Unk
             };
 
-
-            SpecialUserRefs = new string[] {
+            // TODO: need to find a way of localization
+            SpecialUserRefs = new string[]
+            {
                 "",
                 "РИ:Георгиевский кавалер",
                 "СССР:ВОВ:Участник боевых действий",
@@ -253,6 +292,16 @@ namespace GKCore
                 "Вероисповедание:Православие",
                 "Вероисповедание:Старообрядчество"
             };
+
+            // /* 723 */ LSID_RI_GeorgeKnight,
+            // /* 724 */ LSID_USSR_WWII_Combatant,
+            // /* 725 */ LSID_USSR_WWII_KilledInBattle,
+            // /* 726 */ LSID_USSR_WWII_HomeFrontWorker,
+            // /* 727 */ LSID_USSR_Repressed,
+            // /* 728 */ LSID_Religion_Islam,
+            // /* 729 */ LSID_Religion_Catholicism,
+            // /* 730 */ LSID_Religion_Orthodoxy,
+            // /* 731 */ LSID_Religion_TheOldBelievers,
 
 
             CertaintyAssessments = new LSID[]
@@ -314,7 +363,7 @@ namespace GKCore
 
             MediaTypes = new LSID[]
             {
-                LSID.LSID_DefaultValue,
+                LSID.LSID_DefaultValue, // TODO: may be LSID.LSID_MT_15 (Unknown)?
                 LSID.LSID_MT_02,
                 LSID.LSID_MT_03,
                 LSID.LSID_MT_04,
@@ -327,19 +376,21 @@ namespace GKCore
                 LSID.LSID_MT_11,
                 LSID.LSID_MT_12,
                 LSID.LSID_MT_13,
-                LSID.LSID_MT_14,
-                LSID.LSID_MT_15
+                LSID.LSID_MT_14
+                    //LSID.LSID_MT_15 <Unknown removed to first position>
             };
 
 
-            GKStoreTypes = new StoreTypeRec[] {
+            GKStoreTypes = new StoreTypeRec[]
+            {
                 new StoreTypeRec(LSID.LSID_STRef, ""),
                 new StoreTypeRec(LSID.LSID_STStg, "stg:"),
                 new StoreTypeRec(LSID.LSID_STArc, "arc:")
             };
 
 
-            FamilyEvents = new FamilyEventStruct[] {
+            FamilyEvents = new FamilyEventStruct[]
+            {
                 new FamilyEventStruct(LSID.LSID_Event, "EVEN"),
                 new FamilyEventStruct(LSID.LSID_FEvt_1, "ENGA"),
                 new FamilyEventStruct(LSID.LSID_FEvt_2, "MARR"),
@@ -353,17 +404,19 @@ namespace GKCore
             };
 
 
-            DateCalendars = new LSID[]
+            // FIXME: use calendars for StrToGEDCOMDate() and class EventEditDlg
+            DateCalendars = new CalendarStruct[]
             {
-                LSID.LSID_Cal_Gregorian,
-                LSID.LSID_Cal_Julian,
-                LSID.LSID_Cal_Hebrew,
-                LSID.LSID_Cal_French,
-                LSID.LSID_Cal_Roman,
-                LSID.LSID_Unknown
+                new CalendarStruct(LSID.LSID_Cal_Gregorian, " [G]", true),
+                new CalendarStruct(LSID.LSID_Cal_Julian, " [J]", true),
+                new CalendarStruct(LSID.LSID_Cal_Hebrew, " [H]", false), // !
+                new CalendarStruct(LSID.LSID_Cal_French, " [FR]", false),
+                new CalendarStruct(LSID.LSID_Cal_Roman, " [R]", false),
+                new CalendarStruct(LSID.LSID_Cal_Islamic, " [I]", false), // !
+                new CalendarStruct(LSID.LSID_Unknown, "", false)
             };
 
-            
+
             DateKindStruct[] array5 = new DateKindStruct[10];
             array5[0] = new DateKindStruct(LSID.LSID_DK_0, 1); // 1
             array5[1] = new DateKindStruct(LSID.LSID_DK_1, 2); // 2
@@ -378,7 +431,7 @@ namespace GKCore
             DateKinds = array5;
 
 
-            PersonEventStruct[] array6 = new PersonEventStruct[37];
+            PersonEventStruct[] array6 = new PersonEventStruct[41];
             array6[ 0] = new PersonEventStruct(LSID.LSID_Event, "EVEN", PersonEventKind.ekEvent);
             array6[ 1] = new PersonEventStruct(LSID.LSID_Birth, "BIRT", PersonEventKind.ekEvent);
             array6[ 2] = new PersonEventStruct(LSID.LSID_Adoption, "ADOP", PersonEventKind.ekEvent);
@@ -416,11 +469,18 @@ namespace GKCore
             array6[33] = new PersonEventStruct(LSID.LSID_MiliInd, "_MILI_IND", PersonEventKind.ekFact);
             array6[34] = new PersonEventStruct(LSID.LSID_MiliDis, "_MILI_DIS", PersonEventKind.ekFact);
             array6[35] = new PersonEventStruct(LSID.LSID_MiliRank, "_MILI_RANK", PersonEventKind.ekFact);
-            array6[36] = new PersonEventStruct(LSID.LSID_DNAMarkers, "_DNA", PersonEventKind.ekFact);
+
+            array6[36] = new PersonEventStruct(LSID.LSID_BloodGroup, "_BGRO", PersonEventKind.ekFact); // {MyFamilyTree}
+            array6[37] = new PersonEventStruct(LSID.LSID_HairColor, "_HAIR", PersonEventKind.ekFact); // {BKW6, PAF}
+            array6[38] = new PersonEventStruct(LSID.LSID_EyesColor, "_EYES", PersonEventKind.ekFact); // {Gen}
+
+            array6[39] = new PersonEventStruct(LSID.LSID_MDNAHaplogroup, "_MDNA", PersonEventKind.ekFact); // {MyFamilyTree}
+            array6[40] = new PersonEventStruct(LSID.LSID_YDNAHaplogroup, "_YDNA", PersonEventKind.ekFact); // {MyFamilyTree}
             PersonEvents = array6;
 
-            
-            MarriageStatus = new MarStatusStruct[] {
+
+            MarriageStatus = new MarStatusStruct[]
+            {
                 new MarStatusStruct(LSID.LSID_Unknown, ""),
                 new MarStatusStruct(LSID.LSID_MarrRegistered, "MARRIED"),
                 new MarStatusStruct(LSID.LSID_MarrNotRegistered, "MARRNOTREG"),
@@ -428,7 +488,8 @@ namespace GKCore
             };
 
 
-            SexData = new SexStruct[] {
+            SexData = new SexStruct[]
+            {
                 new SexStruct(LSID.LSID_SexN, "N"),
                 new SexStruct(LSID.LSID_SexM, "M"),
                 new SexStruct(LSID.LSID_SexF, "F"),
@@ -503,15 +564,17 @@ namespace GKCore
             StatsTitles[35] = new StatsTitleStruct(LSID.LSID_BirthByMonth, LSID.LSID_BirthByMonth);
             StatsTitles[36] = new StatsTitleStruct(LSID.LSID_Demography, LSID.LSID_Demography);
 
-            CheckSolveNames = new LSID[4];
-            CheckSolveNames[0] = LSID.LSID_RM_Skip;
-            CheckSolveNames[1] = LSID.LSID_SetIsDead;
-            CheckSolveNames[2] = LSID.LSID_DefineSex;
-            CheckSolveNames[3] = LSID.LSID_DoDelete;
+            CheckSolveNames = new LSID[]
+            {
+                LSID.LSID_RM_Skip,
+                LSID.LSID_SetIsDead,
+                LSID.LSID_DefineSex,
+                LSID.LSID_DoDelete
+            };
 
             CondSigns = new string[]
             {
-                "!=", "<", "<=", "==", "=>", ">", "содержит", "не содержит"
+                "!=", "<", "<=", "==", "=>", ">", "contains", "not contains"
             };
 
             NameTypes = new LSID[]
@@ -524,15 +587,9 @@ namespace GKCore
                 LSID.LSID_NTMarried
             };
 
-            Calendars = new string[]
-            {
-                " [G]",
-                " [J]",
-                " [H]",
-                " [FR]",
-                " [R]",
-                ""
-            };
+            //BloodGroups = "|A+|A-|B+|B-|AB+|AB-|O+|O-";
+            BloodGroups = "|(I) O+|(I) O-|(II) A+|(II) A-|(III) B+|(III) B-|(IV) AB+|(IV) AB-";
+            //BloodGroups = new string[] { "", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-" };
         }
     }
 }

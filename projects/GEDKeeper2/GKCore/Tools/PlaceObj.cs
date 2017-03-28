@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -29,12 +29,13 @@ namespace GKCore.Tools
     /// </summary>
     public sealed class PlaceObj : BaseObject
     {
-        public string Name;
+        public readonly string Name;
         public readonly List<GEDCOMCustomEvent> Facts;
 
-        public PlaceObj()
+        public PlaceObj(string name)
         {
-            this.Facts = new List<GEDCOMCustomEvent>();
+            Name = name;
+            Facts = new List<GEDCOMCustomEvent>();
         }
 
         protected override void Dispose(bool disposing)

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -36,22 +36,24 @@ namespace GKUI
         private readonly ToolTip fTip;
         private bool fTipShow;
 
-        public PatriarchsViewerWin(IBaseWindow aBase, int minGens)
+        public PatriarchsViewerWin(IBaseWindow baseWin, int minGens)
         {
             InitializeComponent();
 
-            this.fBase = aBase;
-            this.fTip = new ToolTip();
-            this.fTipShow = false;
+            fBase = baseWin;
+            fTip = new ToolTip();
+            fTipShow = false;
 
-            Graph graph = this.fBase.Context.GetPatriarchsGraph(minGens, false);
-            PL_ConvertGraphToArborSystem(graph, arborViewer1.Sys);
+            using (Graph graph = fBase.Context.GetPatriarchsGraph(minGens, false)) {
+                PL_ConvertGraphToArborSystem(graph, arborViewer1.Sys);
+            }
 
+            arborViewer1.Name = "arborViewer1";
             arborViewer1.NodesDragging = true;
             arborViewer1.start();
         }
 
-        private void ArborViewer1MouseMove(object sender, MouseEventArgs e)
+        private void ArborViewer1_MouseMove(object sender, MouseEventArgs e)
         {
             ArborNode resNode = arborViewer1.getNodeByCoord(e.X, e.Y);
 
@@ -63,10 +65,10 @@ namespace GKUI
             } else {
                 if (!fTipShow) {
                     string xref = resNode.Sign;
-                    //GEDCOMIndividualRecord iRec = this.fBase.Tree.XRefIndex_Find(xref) as GEDCOMIndividualRecord;
+                    //GEDCOMIndividualRecord iRec = fBase.Tree.XRefIndex_Find(xref) as GEDCOMIndividualRecord;
                     //string txt = iRec.GetNameString(true, false) + " [" + xref + "]";
 
-                    GEDCOMFamilyRecord famRec = this.fBase.Tree.XRefIndex_Find(xref) as GEDCOMFamilyRecord;
+                    GEDCOMFamilyRecord famRec = fBase.Tree.XRefIndex_Find(xref) as GEDCOMFamilyRecord;
                     string txt = GKUtils.GetFamilyString(famRec) + " [" + xref + "] "/* + resNode.Mass.ToString()*/;
 
                     fTip.Show(txt, arborViewer1, e.X + 24, e.Y);
@@ -75,7 +77,7 @@ namespace GKUI
             }
         }
 
-        private static void PL_ConvertGraphToArborSystem(Graph graph, ArborSystem sys)
+        private static void PL_ConvertGraphToArborSystem(IGraph graph, ArborSystem sys)
         {
             foreach (Vertex vtx in graph.Vertices) {
                 ArborNode arbNode = sys.addNode(vtx.Sign);

@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -39,45 +39,36 @@ namespace GKUI.Dialogs
         {
             InitializeComponent();
 
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                GKComboItem item = this.lstLanguages.Items[this.lstLanguages.SelectedIndex] as GKComboItem;
+                GKComboItem item = lstLanguages.Items[lstLanguages.SelectedIndex] as GKComboItem;
                 if (item != null) {
                     SelectedLanguage = (int)item.Tag;
                 }
 
-                this.DialogResult = DialogResult.OK;
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
                 Logger.LogWrite("LanguageSelectDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                DialogResult = DialogResult.None;
             }
         }
 
         private void LanguageSelectDlg_Load(object sender, EventArgs e)
         {
-            this.lstLanguages.Items.Clear();
-            this.lstLanguages.Items.Add(new GKComboItem(LangMan.LS_DEF_NAME, LangMan.LS_DEF_CODE));
-
-            //int idx = 0;
-            int num = GlobalOptions.Instance.GetLangsCount();
-            for (int i = 0; i < num; i++)
-            {
-                LangRecord lngRec = GlobalOptions.Instance.GetLang(i);
-                //if (GlobalOptions.Instance.InterfaceLang == lngRec.Code)
-                //{
-                //    idx = i + 1;
-                //}
-                this.lstLanguages.Items.Add(new GKComboItem(lngRec.Name, (int)lngRec.Code));
+            lstLanguages.Items.Clear();
+            lstLanguages.Items.Add(new GKComboItem(LangMan.LS_DEF_NAME, LangMan.LS_DEF_CODE));
+            foreach (LangRecord lngRec in GlobalOptions.Instance.Languages) {
+                lstLanguages.Items.Add(new GKComboItem(lngRec.Name, (int)lngRec.Code));
             }
-            //this.lstLanguages.SelectedIndex = idx;
+            GKUtils.SelectComboItem(lstLanguages, LangMan.LS_DEF_CODE, true);
         }
     }
 }

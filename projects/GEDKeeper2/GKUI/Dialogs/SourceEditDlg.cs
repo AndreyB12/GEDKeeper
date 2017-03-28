@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -25,8 +25,8 @@ using GKCommon;
 using GKCommon.GEDCOM;
 using GKCore;
 using GKCore.Interfaces;
+using GKCore.Operations;
 using GKCore.Types;
-using GKUI.Controls;
 using GKUI.Sheets;
 
 namespace GKUI.Dialogs
@@ -34,81 +34,75 @@ namespace GKUI.Dialogs
     /// <summary>
     /// 
     /// </summary>
-    public partial class SourceEditDlg : Form, IBaseEditor
+    public sealed partial class SourceEditDlg : EditorDialog
     {
-        private readonly IBaseWindow fBase;
-        private readonly GKNotesSheet fNotesList;
-        private readonly GKMediaSheet fMediaList;
+        private readonly GKSheetList fNotesList;
+        private readonly GKSheetList fMediaList;
         private readonly GKSheetList fRepositoriesList;
 
         private GEDCOMSourceRecord fSourceRecord;
 
         public GEDCOMSourceRecord SourceRecord
         {
-            get { return this.fSourceRecord; }
-            set { this.SetSourceRecord(value); }
-        }
-
-        public IBaseWindow Base
-        {
-            get { return this.fBase; }
+            get { return fSourceRecord; }
+            set { SetSourceRecord(value); }
         }
 
         private void SetSourceRecord(GEDCOMSourceRecord value)
         {
-            this.fSourceRecord = value;
+            fSourceRecord = value;
             
-            this.txtShortTitle.Text = this.fSourceRecord.FiledByEntry;
-            this.txtAuthor.Text = this.fSourceRecord.Originator.Text.Trim();
-            this.txtTitle.Text = this.fSourceRecord.Title.Text.Trim();
-            this.txtPublication.Text = this.fSourceRecord.Publication.Text.Trim();
-            this.txtText.Text = this.fSourceRecord.Text.Text.Trim();
+            txtShortTitle.Text = fSourceRecord.FiledByEntry;
+            txtAuthor.Text = fSourceRecord.Originator.Text.Trim();
+            txtTitle.Text = fSourceRecord.Title.Text.Trim();
+            txtPublication.Text = fSourceRecord.Publication.Text.Trim();
+            txtText.Text = fSourceRecord.Text.Text.Trim();
 
-            this.fNotesList.DataList = this.fSourceRecord.Notes.GetEnumerator();
-            this.fMediaList.DataList = this.fSourceRecord.MultimediaLinks.GetEnumerator();
-            this.UpdateReposSheet();
+            fNotesList.ListModel.DataOwner = fSourceRecord;
+            fMediaList.ListModel.DataOwner = fSourceRecord;
+
+            UpdateReposSheet();
             
-            this.ActiveControl = this.txtShortTitle;
+            ActiveControl = txtShortTitle;
         }
 
-        public SourceEditDlg(IBaseWindow aBase)
+        public SourceEditDlg(IBaseWindow baseWin) : base(baseWin)
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            this.btnAccept.Image = global::GKResources.iBtnAccept;
-            this.btnCancel.Image = global::GKResources.iBtnCancel;
+            btnAccept.Image = GKResources.iBtnAccept;
+            btnCancel.Image = GKResources.iBtnCancel;
 
-            this.fBase = aBase;
+            fNotesList = new GKSheetList(pageNotes, new GKNotesListModel(fBase, fLocalUndoman));
 
-            this.fNotesList = new GKNotesSheet(this, this.pageNotes);
-            this.fMediaList = new GKMediaSheet(this, this.pageMultimedia);
-            this.fRepositoriesList = this.CreateReposSheet(this.pageRepositories);
+            fMediaList = new GKSheetList(pageMultimedia, new GKMediaListModel(fBase, fLocalUndoman));
+
+            fRepositoriesList = CreateReposSheet(pageRepositories);
+            fRepositoriesList.SetControlName("fRepositoriesList"); // for purpose of tests
 
             // SetLang()
-            this.Text = LangMan.LS(LSID.LSID_Source);
-            this.btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
-            this.btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
-            this.lblShortTitle.Text = LangMan.LS(LSID.LSID_ShortTitle);
-            this.lblAuthor.Text = LangMan.LS(LSID.LSID_Author);
-            this.lblTitle.Text = LangMan.LS(LSID.LSID_Title);
-            this.lblPublication.Text = LangMan.LS(LSID.LSID_Publication);
-            this.pageCommon.Text = LangMan.LS(LSID.LSID_Common);
-            this.pageText.Text = LangMan.LS(LSID.LSID_Text);
-            this.pageRepositories.Text = LangMan.LS(LSID.LSID_RPRepositories);
-            this.pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
-            this.pageMultimedia.Text = LangMan.LS(LSID.LSID_RPMultimedia);
+            Text = LangMan.LS(LSID.LSID_Source);
+            btnAccept.Text = LangMan.LS(LSID.LSID_DlgAccept);
+            btnCancel.Text = LangMan.LS(LSID.LSID_DlgCancel);
+            lblShortTitle.Text = LangMan.LS(LSID.LSID_ShortTitle);
+            lblAuthor.Text = LangMan.LS(LSID.LSID_Author);
+            lblTitle.Text = LangMan.LS(LSID.LSID_Title);
+            lblPublication.Text = LangMan.LS(LSID.LSID_Publication);
+            pageCommon.Text = LangMan.LS(LSID.LSID_Common);
+            pageText.Text = LangMan.LS(LSID.LSID_Text);
+            pageRepositories.Text = LangMan.LS(LSID.LSID_RPRepositories);
+            pageNotes.Text = LangMan.LS(LSID.LSID_RPNotes);
+            pageMultimedia.Text = LangMan.LS(LSID.LSID_RPMultimedia);
         }
 
         private GKSheetList CreateReposSheet(Control owner)
         {
             GKSheetList sheet = new GKSheetList(owner);
-            
-            sheet.Columns_BeginUpdate();
+
             sheet.AddColumn(LangMan.LS(LSID.LSID_Repository), 300, false);
-            sheet.Columns_EndUpdate();
 
             sheet.Buttons = EnumSet<SheetButton>.Create(SheetButton.lbAdd, SheetButton.lbDelete, SheetButton.lbJump);
-            sheet.OnModify += this.ModifyReposSheet;
+            sheet.OnModify += ModifyReposSheet;
 
             return sheet;
         }
@@ -117,13 +111,13 @@ namespace GKUI.Dialogs
         {
             try
             {
-                this.fRepositoriesList.ClearItems();
+                fRepositoriesList.ClearItems();
 
-                foreach (GEDCOMRepositoryCitation repCit in this.fSourceRecord.RepositoryCitations) {
+                foreach (GEDCOMRepositoryCitation repCit in fSourceRecord.RepositoryCitations) {
                     GEDCOMRepositoryRecord rep = repCit.Value as GEDCOMRepositoryRecord;
                     if (rep == null) continue;
 
-                    this.fRepositoriesList.AddItem(rep.RepositoryName, repCit);
+                    fRepositoriesList.AddItem(rep.RepositoryName, repCit);
                 }
             }
             catch (Exception ex)
@@ -141,64 +135,80 @@ namespace GKUI.Dialogs
             switch (eArgs.Action)
             {
                 case RecordAction.raAdd:
-                    GEDCOMRepositoryRecord rep = this.fBase.SelectRecord(GEDCOMRecordType.rtRepository, null) as GEDCOMRepositoryRecord;
+                    GEDCOMRepositoryRecord rep = fBase.SelectRecord(GEDCOMRecordType.rtRepository, null) as GEDCOMRepositoryRecord;
                     if (rep != null) {
-                        this.fSourceRecord.AddRepository(rep);
+                        //this.fSourceRecord.AddRepository(rep);
+                        fLocalUndoman.DoOrdinaryOperation(OperationType.otSourceRepositoryCitationAdd, fSourceRecord, rep);
                         result = true;
                     }
                     break;
 
                 case RecordAction.raDelete:
                     if (cit != null && GKUtils.ShowQuestion(LangMan.LS(LSID.LSID_DetachRepositoryQuery)) != DialogResult.No) {
-                        this.fSourceRecord.RepositoryCitations.Delete(cit);
+                        //this.fSourceRecord.RepositoryCitations.Delete(cit);
+                        fLocalUndoman.DoOrdinaryOperation(OperationType.otSourceRepositoryCitationRemove, fSourceRecord, cit.Value as GEDCOMRepositoryRecord);
                         result = true;
                     }
                     break;
 
                 case RecordAction.raJump:
                     if (cit != null) {
-                        this.AcceptChanges();
-                        this.Base.SelectRecordByXRef(cit.Value.XRef);
-                        base.Close();
+                        AcceptChanges();
+                        fBase.SelectRecordByXRef(cit.Value.XRef);
+                        Close();
                     }
                     break;
             }
 
-            if (result) this.UpdateReposSheet();
+            if (result) UpdateReposSheet();
         }
 
         private void AcceptChanges()
         {
-            this.fSourceRecord.FiledByEntry = this.txtShortTitle.Text;
-            this.fSourceRecord.Originator.Clear();
-            this.fSourceRecord.SetOriginatorArray(this.txtAuthor.Lines);
-            this.fSourceRecord.Title.Clear();
-            this.fSourceRecord.SetTitleArray(this.txtTitle.Lines);
-            this.fSourceRecord.Publication.Clear();
-            this.fSourceRecord.SetPublicationArray(this.txtPublication.Lines);
-            this.fSourceRecord.Text.Clear();
-            this.fSourceRecord.SetTextArray(this.txtText.Lines);
+            fSourceRecord.FiledByEntry = txtShortTitle.Text;
+            fSourceRecord.Originator.Clear();
+            fSourceRecord.SetOriginatorArray(txtAuthor.Lines);
+            fSourceRecord.Title.Clear();
+            fSourceRecord.SetTitleArray(txtTitle.Lines);
+            fSourceRecord.Publication.Clear();
+            fSourceRecord.SetPublicationArray(txtPublication.Lines);
+            fSourceRecord.Text.Clear();
+            fSourceRecord.SetTextArray(txtText.Lines);
 
-            this.Base.ChangeRecord(this.fSourceRecord);
+            CommitChanges();
+
+            fBase.ChangeRecord(fSourceRecord);
         }
 
         private void btnAccept_Click(object sender, EventArgs e)
         {
             try
             {
-                this.AcceptChanges();
-                base.DialogResult = DialogResult.OK;
+                AcceptChanges();
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
-                this.fBase.Host.LogWrite("SourceEditDlg.btnAccept_Click(): " + ex.Message);
-                base.DialogResult = DialogResult.None;
+                fBase.Host.LogWrite("SourceEditDlg.btnAccept_Click(): " + ex.Message);
+                DialogResult = DialogResult.None;
+            }
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                RollbackChanges();
+            }
+            catch (Exception ex)
+            {
+                fBase.Host.LogWrite("SourceEditDlg.btnCancel_Click(): " + ex.Message);
             }
         }
 
         private void EditShortTitle_TextChanged(object sender, EventArgs e)
         {
-            this.Text = string.Format("{0} \"{1}\"", LangMan.LS(LSID.LSID_Source), this.txtShortTitle.Text);
+            Text = string.Format("{0} \"{1}\"", LangMan.LS(LSID.LSID_Source), txtShortTitle.Text);
         }
     }
 }

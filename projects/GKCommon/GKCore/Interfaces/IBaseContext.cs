@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -30,7 +30,9 @@ namespace GKCore.Interfaces
 {
     public interface IBaseContext
     {
+        ICulture Culture { get; }
         GEDCOMTree Tree { get; }
+        ValuesCollection ValuesCollection { get; }
 
         void Clear();
         void FileLoad(string fileName, string password = null);
@@ -44,6 +46,7 @@ namespace GKCore.Interfaces
         GEDCOMCustomEvent CreateEventEx(GEDCOMRecordWithEvents aRec, string evSign, string evDate, string evPlace);
         GEDCOMIndividualRecord CreatePersonEx(string iName, string iPatronymic, string iSurname, GEDCOMSex iSex, bool birthEvent);
         bool DeleteRecord(GEDCOMRecord record);
+        void CollectEventValues(GEDCOMCustomEvent evt);
 
         // Individual utils
         bool IsChildless(GEDCOMIndividualRecord iRec);
@@ -62,8 +65,13 @@ namespace GKCore.Interfaces
         void MediaLoad(GEDCOMFileReference fileReference, out Stream stream, bool throwException);
         void MediaLoad(GEDCOMFileReference fileReference, ref string fileName);
         bool MediaSave(GEDCOMFileReference fileReference, string fileName, MediaStoreType storeType);
-        Bitmap BitmapLoad(GEDCOMFileReference fileReference, int thumbWidth, int thumbHeight, bool throwException);
+
+        // Used only in MediaViewer and Slideshow
+        Bitmap LoadMediaImage(GEDCOMFileReference fileReference, bool throwException);
+        Bitmap LoadMediaImage(GEDCOMFileReference fileReference, int thumbWidth, int thumbHeight, ExtRect cutoutArea, bool throwException);
+        // Used in FamilyBookExporter, TreeChart and PersonEdit
         Bitmap GetPrimaryBitmap(GEDCOMIndividualRecord iRec, int thumbWidth, int thumbHeight, bool throwException);
+        string GetPrimaryBitmapUID(GEDCOMIndividualRecord iRec);
 
         bool IsUpdated();
         void BeginUpdate();
@@ -71,5 +79,7 @@ namespace GKCore.Interfaces
 
         void DoUndo();
         void DoRedo();
+        void DoCommit();
+        void DoRollback();
     }
 }

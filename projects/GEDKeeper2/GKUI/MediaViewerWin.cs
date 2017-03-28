@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using System;
 using System.Drawing;
 using System.IO;
 using System.Text;
@@ -28,6 +29,7 @@ using GKCommon.GEDCOM;
 using GKCore;
 using GKCore.Interfaces;
 using GKCore.Types;
+using GKMediaPlayer;
 
 namespace GKUI
 {
@@ -37,122 +39,186 @@ namespace GKUI
     public partial class MediaViewerWin : Form, ILocalization
     {
         private readonly IBaseWindow fBase;
-
         private GEDCOMFileReferenceWithTitle fFileRef;
-        private bool fExtern;
-        private ImageView fImageCtl;
-
-        public bool Extern
-        {
-            get { return this.fExtern; }
-        }
+        private Control fViewer;
 
         public GEDCOMFileReferenceWithTitle FileRef
         {
-            get { return this.fFileRef; }
-            set { this.SetFileRef(value); }
+            get { return fFileRef; }
+            set { SetFileRef(value); }
         }
 
         private void SetFileRef(GEDCOMFileReferenceWithTitle value)
         {
-            this.fFileRef = value;
-            this.fExtern = false;
-            this.Text = this.fFileRef.Title;
+            fFileRef = value;
+            Text = fFileRef.Title;
             Control ctl = null;
 
-            this.SuspendLayout();
+            MultimediaKind mmKind = GKUtils.GetMultimediaKind(fFileRef.MultimediaFormat);
 
-            MultimediaKind mmKind = GKUtils.GetMultimediaKind(this.fFileRef.MultimediaFormat);
-
-            switch (mmKind)
+            try
             {
-                case MultimediaKind.mkImage:
-                    {
-                        Image img = this.fBase.Context.BitmapLoad(this.fFileRef, -1, -1, false);
-                        this.fImageCtl = new ImageView();
-                        this.fImageCtl.OpenImage(img);
-                        ctl = this.fImageCtl;
-                        break;
-                    }
-
-                case MultimediaKind.mkAudio:
-                case MultimediaKind.mkVideo:
-                    {
-                        this.fExtern = true;
-                        string targetFile = "";
-                        this.fBase.Context.MediaLoad(this.fFileRef, ref targetFile);
-                        GKUtils.LoadExtFile(targetFile);
-                        break;
-                    }
-
-                case MultimediaKind.mkText:
-                    {
-                        Stream fs;
-                        this.fBase.Context.MediaLoad(this.fFileRef, out fs, false);
-
-                        switch (this.fFileRef.MultimediaFormat)
+                switch (mmKind)
+                {
+                    case MultimediaKind.mkImage:
                         {
-                            case GEDCOMMultimediaFormat.mfTXT:
-                                using (StreamReader strd = new StreamReader(fs, Encoding.GetEncoding(1251))) {
-                                    TextBox txtBox = new TextBox();
-                                    txtBox.Multiline = true;
-                                    txtBox.ReadOnly = true;
-                                    txtBox.ScrollBars = ScrollBars.Both;
-                                    txtBox.Text = strd.ReadToEnd();
-                                    ctl = txtBox;
-                                }
-                                break;
-
-                            case GEDCOMMultimediaFormat.mfRTF:
-                                using (StreamReader strd = new StreamReader(fs)) {
-                                    RichTextBox rtfBox = new RichTextBox();
-                                    rtfBox.ReadOnly = true;
-                                    rtfBox.Text = strd.ReadToEnd();
-                                    ctl = rtfBox;
-                                }
-                                break;
-
-                            case GEDCOMMultimediaFormat.mfHTM:
-                                ctl = new WebBrowser();
-                                (ctl as WebBrowser).DocumentStream = fs;
-                                break;
+                            Image img = fBase.Context.LoadMediaImage(fFileRef, false);
+                            SetViewImage(img);
+                            break;
                         }
-                        break;
-                    }
-            }
 
-            if (ctl != null) {
-                ctl.Dock = DockStyle.Fill;
-                ctl.Location = new Point(0, 0);
-                ctl.Size = new Size(100, 100);
-                base.Controls.Add(ctl);
-                base.Controls.SetChildIndex(ctl, 0);
-            }
+                    case MultimediaKind.mkAudio:
+                    case MultimediaKind.mkVideo:
+                        {
+                            string targetFile = "";
+                            fBase.Context.MediaLoad(fFileRef, ref targetFile);
+                            SetViewMedia(targetFile);
+                            break;
+                        }
 
-            this.ResumeLayout(false);
+                    case MultimediaKind.mkText:
+                        {
+                            Stream fs;
+                            fBase.Context.MediaLoad(fFileRef, out fs, false);
+
+                            switch (fFileRef.MultimediaFormat)
+                            {
+                                case GEDCOMMultimediaFormat.mfTXT:
+                                    {
+                                        TextBox txtBox = new TextBox();
+                                        txtBox.Multiline = true;
+                                        txtBox.ReadOnly = true;
+                                        txtBox.ScrollBars = ScrollBars.Both;
+
+                                        try {
+                                            // FIXME: fix encoding! and test other!!!
+                                            using (StreamReader strd = new StreamReader(fs, Encoding.GetEncoding(1251))) {
+                                                txtBox.Text = strd.ReadToEnd();
+                                            }
+                                        } catch (Exception ex) {
+                                            fBase.Host.LogWrite("MediaViewerWin.SetFileRef.1(): " + ex.Message);
+                                        }
+
+                                        ctl = txtBox;
+                                        SetViewControl(ctl);
+                                    }
+                                    break;
+
+                                case GEDCOMMultimediaFormat.mfRTF:
+                                    {
+                                        RichTextBox rtfBox = new RichTextBox();
+                                        rtfBox.ReadOnly = true;
+
+                                        try {
+                                            using (StreamReader strd = new StreamReader(fs)) {
+                                                rtfBox.Text = strd.ReadToEnd();
+                                            }
+                                        } catch (Exception ex) {
+                                            fBase.Host.LogWrite("MediaViewerWin.SetFileRef.2(): " + ex.Message);
+                                        }
+
+                                        ctl = rtfBox;
+                                        SetViewControl(ctl);
+                                    }
+                                    break;
+
+                                case GEDCOMMultimediaFormat.mfHTM:
+                                    {
+                                        var browser = new WebBrowser();
+
+                                        try {
+                                            browser.DocumentStream = fs;
+                                            /*using (StreamReader strd = new StreamReader(fs)) {
+                                                browser.DocumentText = strd.ReadToEnd();
+                                                // didn't work, because didn't defines codepage from page's header (?!)
+                                            }*/
+                                        } catch (Exception ex) {
+                                            fBase.Host.LogWrite("MediaViewerWin.SetFileRef.3(): " + ex.Message);
+                                        }
+
+                                        ctl = browser;
+                                        SetViewControl(ctl);
+                                    }
+                                    break;
+                            }
+                            if (fs != null && !(ctl is WebBrowser)) fs.Dispose();
+                            
+                            break;
+                        }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ctl != null) ctl.Dispose();
+
+                fBase.Host.LogWrite("MediaViewerWin.SetFileRef(): " + ex.Message);
+            }
+        }
+
+        public void SetViewMedia(string mediaFile)
+        {
+            MediaPlayer mediaPlayer = new MediaPlayer();
+            mediaPlayer.MediaFile = mediaFile;
+
+            SetViewControl(mediaPlayer);
+        }
+
+        public void SetViewImage(Image img)
+        {
+            ImageView imageCtl = new ImageView();
+            imageCtl.OpenImage(img);
+            imageCtl.btnSizeToFit.Text = LangMan.LS(LSID.LSID_SizeToFit);
+            imageCtl.btnZoomIn.Text = LangMan.LS(LSID.LSID_ZoomIn);
+            imageCtl.btnZoomOut.Text = LangMan.LS(LSID.LSID_ZoomOut);
+
+            SetViewControl(imageCtl);
+        }
+
+        private void SetViewControl(Control ctl)
+        {
+            if (ctl == null) return;
+            fViewer = ctl;
+
+            SuspendLayout();
+
+            ctl.Dock = DockStyle.Fill;
+            ctl.Location = new Point(0, 0);
+            ctl.Size = new Size(100, 100);
+            Controls.Add(ctl);
+            Controls.SetChildIndex(ctl, 0);
+
+            ResumeLayout(false);
+        }
+
+        public MediaViewerWin(IBaseWindow baseWin)
+        {
+            InitializeComponent();
+
+            fBase = baseWin;
+            SetLang();
+        }
+
+        public void SetLang()
+        {
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            if (fViewer != null) fViewer.Select();
         }
 
         private void MediaViewerWin_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape) {
-                base.Close();
+                Close();
             }
         }
 
-        public MediaViewerWin(IBaseWindow aBase)
+        private void MediaViewerWin_FormClosing(object sender, FormClosingEventArgs e)
         {
-            this.InitializeComponent();
-            this.fBase = aBase;
-
-            this.SetLang();
-        }
-
-        public void SetLang()
-        {
-            if (this.fImageCtl != null) {
-                this.fImageCtl.btnSizeToFit.Text = LangMan.LS(LSID.LSID_SizeToFit);
-                this.fImageCtl.btnZoomIn.Text = LangMan.LS(LSID.LSID_ZoomIn);
-                this.fImageCtl.btnZoomOut.Text = LangMan.LS(LSID.LSID_ZoomOut);
+            if (fViewer is MediaPlayer) {
+                ((MediaPlayer)fViewer).btnStop_Click(null, null);
             }
         }
     }

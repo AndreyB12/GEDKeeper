@@ -93,7 +93,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="GKLifePlugin.eng">
+    <None Include="GKLifePlugin.enu">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="GKLifePlugin.pol">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="GKLifePlugin.rus">

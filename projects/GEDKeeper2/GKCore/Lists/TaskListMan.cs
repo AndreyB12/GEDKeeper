@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,11 +29,11 @@ namespace GKCore.Lists
     /// </summary>
     public enum TaskColumnType
     {
-        tctGoal,
-        tctPriority,
-        tctStartDate,
-        tctStopDate,
-        tctChangeDate
+        ctGoal,
+        ctPriority,
+        ctStartDate,
+        ctStopDate,
+        ctChangeDate
     }
 
     /// <summary>
@@ -44,16 +43,11 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_Goal, DataType.dtString, 300, true);
-            this.AddStatic(LSID.LSID_Priority, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_StartDate, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_StopDate, DataType.dtString, 90, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public TaskListColumns() : base()
-        {
-            InitData(typeof(TaskColumnType));
+            AddColumn(LSID.LSID_Goal, DataType.dtString, 300, true);
+            AddColumn(LSID.LSID_Priority, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_StartDate, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_StopDate, DataType.dtString, 90, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -64,40 +58,50 @@ namespace GKCore.Lists
     {
         private GEDCOMTaskRecord fRec;
 
+        public TaskListMan(GEDCOMTree tree) : base(tree, new TaskListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(GKUtils.GetTaskGoalStr(this.fRec), this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(GKUtils.GetTaskGoalStr(fRec), QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMTaskRecord);
+            fRec = (aRec as GEDCOMTaskRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    return GKUtils.GetTaskGoalStr(this.fRec);
-                case 1:
-                    return LangMan.LS(GKData.PriorityNames[(int)this.fRec.Priority]);
-                case 2:
-                    return GetDateValue(this.fRec.StartDate, isVisible);
-                case 3:
-                    return GetDateValue(this.fRec.StopDate, isVisible);
-                case 4:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((TaskColumnType)colType)
+            {
+                case TaskColumnType.ctGoal:
+                    result = GKUtils.GetTaskGoalStr(fRec);
+                    break;
 
-        public TaskListMan(GEDCOMTree tree) : base(tree, new TaskListColumns())
-        {
+                case TaskColumnType.ctPriority:
+                    result = LangMan.LS(GKData.PriorityNames[(int)fRec.Priority]);
+                    break;
+
+                case TaskColumnType.ctStartDate:
+                    result = GetDateValue(fRec.StartDate, isVisible);
+                    break;
+
+                case TaskColumnType.ctStopDate:
+                    result = GetDateValue(fRec.StopDate, isVisible);
+                    break;
+
+                case TaskColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

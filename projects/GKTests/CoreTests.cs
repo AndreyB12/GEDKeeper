@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -21,29 +21,35 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Forms;
+
 using GKCommon;
+using GKCommon.Controls;
 using GKCommon.GEDCOM;
 using GKCore;
 using GKCore.Cultures;
+using GKCore.Export;
+using GKCore.Geocoding;
 using GKCore.Interfaces;
 using GKCore.Kinships;
 using GKCore.Lists;
-using GKCore.Maps;
 using GKCore.Operations;
 using GKCore.Options;
 using GKCore.Stats;
 using GKCore.Tools;
 using GKCore.Types;
+using GKTests.Mocks;
 using GKUI.Charts;
 using GKUI.Controls;
+using GKUI.Sheets;
 using NUnit.Framework;
 
-namespace GKTests
+namespace GKTests.GKCore
 {
     [TestFixture]
     public class CoreTests
     {
-        BaseContext fContext;
+        private BaseContext fContext;
 
         [TestFixtureSetUp]
         public void SetUp()
@@ -62,12 +68,16 @@ namespace GKTests
         [Test]
         public void Context_Tests()
         {
+            Assert.IsNotNull(fContext.Culture);
+
             GEDCOMSourceRecord srcRec = fContext.FindSource("test source");
             Assert.IsNull(srcRec);
 
             StringList sources = new StringList();
             fContext.GetSourcesList(sources);
             Assert.AreEqual(1, sources.Count);
+
+            Assert.IsNotNull(fContext.ValuesCollection);
 
             GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
             Assert.IsNotNull(iRec);
@@ -93,13 +103,37 @@ namespace GKTests
             Assert.IsTrue(fContext.DeleteRecord(fContext.Tree.CreateCommunication()));
             Assert.IsTrue(fContext.DeleteRecord(fContext.Tree.CreateLocation()));
 
-            //fContext.Clear();
-            //Assert.AreEqual(0, fContext.Tree.RecordsCount);
+            string fn = "";
+            Assert.Throws(typeof(ArgumentNullException), () => { fContext.GetStoreType(null, ref fn); });
+            Assert.AreEqual(MediaStoreType.mstReference, fContext.GetStoreType(new GEDCOMFileReference(fContext.Tree, null, "", "file.txt"), ref fn));
+            Assert.AreEqual(MediaStoreType.mstStorage, fContext.GetStoreType(new GEDCOMFileReference(fContext.Tree, null, "", "stg:file.txt"), ref fn));
+            Assert.AreEqual(MediaStoreType.mstArchive, fContext.GetStoreType(new GEDCOMFileReference(fContext.Tree, null, "", "arc:file.txt"), ref fn));
+
+            fContext.CollectEventValues(null);
 
             fContext.BeginUpdate();
             Assert.IsTrue(fContext.IsUpdated());
             fContext.EndUpdate();
             Assert.IsFalse(fContext.IsUpdated());
+
+            //Graph patrGraph = fContext.GetPatriarchsGraph(1, true, false);
+            //Assert.IsNotNull(patrGraph);
+
+            fContext.DoUndo();
+            fContext.DoRedo();
+            fContext.DoCommit();
+            fContext.DoRollback();
+        }
+
+        [Test]
+        public void Context2_Tests()
+        {
+            BaseContext context = TestStubs.CreateContext();
+            TestStubs.FillContext(context);
+            Assert.AreEqual(15, context.Tree.RecordsCount);
+
+            context.Clear();
+            Assert.AreEqual(0, context.Tree.RecordsCount);
         }
 
         private void TransactionEventHandler(object sender, TransactionType type)
@@ -116,10 +150,8 @@ namespace GKTests
         [Test]
         public void Undoman_Tests()
         {
-            using (UndoManager undoman = new UndoManager(fContext.Tree)) {
+            using (UndoManager undoman = new UndoManager()) {
                 Assert.IsNotNull(undoman);
-
-                Assert.AreEqual(fContext.Tree, undoman.Tree);
 
                 Assert.IsFalse(undoman.CanUndo());
                 Assert.IsFalse(undoman.CanRedo());
@@ -136,19 +168,25 @@ namespace GKTests
                 Assert.IsFalse(undoman.DoOperation(new InvalidOperation(undoman)));
             }
 
+            Assert.AreEqual(fContext.Tree, fContext.Undoman.Tree);
+
             fContext.Undoman.OnTransaction += TransactionEventHandler;
 
             fContext.Undoman.Clear();
 
-            Assert.Throws(typeof(ArgumentNullException), () => { fContext.ChangePersonBookmark(null, true); });
-            Assert.Throws(typeof(ArgumentNullException), () => { fContext.ChangePersonPatriarch(null, true); });
-            Assert.Throws(typeof(ArgumentNullException), () => { fContext.ChangePersonSex(null, GEDCOMSex.svUndetermined); });
-
             GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
             Assert.IsNotNull(iRec);
 
+            Assert.Throws(typeof(ArgumentNullException), () => {
+                              fContext.Undoman.DoOrdinaryOperation(
+                                  OperationType.otIndividualBookmarkChange, null, true); });
+
+            Assert.Throws(typeof(ArgumentNullException), () => {
+                              fContext.Undoman.DoOrdinaryOperation(
+                                  OperationType.otIndividualBookmarkChange, iRec, null); });
+
             iRec.Bookmark = false;
-            fContext.ChangePersonBookmark(iRec, true);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualBookmarkChange, iRec, true);
             Assert.IsTrue(iRec.Bookmark);
             Assert.IsTrue(fContext.Undoman.CanUndo());
             fContext.Undoman.Undo();
@@ -156,7 +194,7 @@ namespace GKTests
             Assert.IsFalse(fContext.Undoman.CanUndo());
 
             iRec.Patriarch = false;
-            fContext.ChangePersonPatriarch(iRec, true);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualPatriarchChange, iRec, true);
             Assert.IsTrue(iRec.Patriarch);
             Assert.IsTrue(fContext.Undoman.CanUndo());
             fContext.Undoman.Undo();
@@ -164,7 +202,7 @@ namespace GKTests
             Assert.IsFalse(fContext.Undoman.CanUndo());
 
             iRec.Sex = GEDCOMSex.svUndetermined;
-            fContext.ChangePersonSex(iRec, GEDCOMSex.svMale);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualSexChange, iRec, GEDCOMSex.svMale);
             Assert.AreEqual(GEDCOMSex.svMale, iRec.Sex);
             Assert.IsTrue(fContext.Undoman.CanUndo());
             fContext.Undoman.Undo();
@@ -182,9 +220,9 @@ namespace GKTests
             iRec.Patriarch = false;
             iRec.Sex = GEDCOMSex.svUndetermined;
 
-            fContext.ChangePersonBookmark(iRec, true);
-            fContext.ChangePersonPatriarch(iRec, true);
-            fContext.ChangePersonSex(iRec, GEDCOMSex.svMale);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualBookmarkChange, iRec, true);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualPatriarchChange, iRec, true);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualSexChange, iRec, GEDCOMSex.svMale);
             fContext.Undoman.Commit();
             Assert.IsTrue(iRec.Bookmark);
             Assert.IsTrue(iRec.Patriarch);
@@ -197,9 +235,9 @@ namespace GKTests
             Assert.IsFalse(fContext.Undoman.CanUndo());
 
 
-            fContext.ChangePersonBookmark(iRec, true);
-            fContext.ChangePersonPatriarch(iRec, true);
-            fContext.ChangePersonSex(iRec, GEDCOMSex.svMale);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualBookmarkChange, iRec, true);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualPatriarchChange, iRec, true);
+            fContext.Undoman.DoOrdinaryOperation(OperationType.otIndividualSexChange, iRec, GEDCOMSex.svMale);
             fContext.Undoman.Rollback();
             Assert.IsFalse(iRec.Bookmark);
             Assert.IsFalse(iRec.Patriarch);
@@ -207,24 +245,15 @@ namespace GKTests
             Assert.IsFalse(fContext.Undoman.CanUndo());
 
             fContext.Undoman.OnTransaction -= TransactionEventHandler;
-        }
 
-        [Test]
-        public void SCCrypt_Tests()
-        {
-            const string pw = "test password";
-            string crypt = SCCrypt.scEncrypt(pw, unchecked((ushort)CRC32.CrcStr("test")));
-            string pw1 = SCCrypt.scDecrypt(crypt, unchecked((ushort)CRC32.CrcStr("test")));
 
-            Assert.AreEqual(pw, pw1, "SCCrypt_Test");
-        }
-
-        [Test]
-        public void Bits_Tests()
-        {
-            Assert.AreEqual(true, GKUtils.IsSetBit(3, 0));
-            Assert.AreEqual(true, GKUtils.IsSetBit(3, 1));
-            Assert.AreEqual(false, GKUtils.IsSetBit(3, 4));
+            Assert.Throws(typeof(ArgumentNullException), () => {
+                              fContext.Undoman.DoIndividualNameChange(null, "", "", ""); });
+            Assert.AreEqual("Ivanov Ivan Ivanovich", GKUtils.GetNameString(iRec, true, false));
+            fContext.Undoman.DoIndividualNameChange(iRec, "Petrov", "Alex", "Ivanovich");
+            Assert.AreEqual("Petrov Alex Ivanovich", GKUtils.GetNameString(iRec, true, false));
+            fContext.Undoman.Rollback();
+            Assert.AreEqual("Ivanov Ivan Ivanovich", GKUtils.GetNameString(iRec, true, false));
         }
 
         [Test]
@@ -232,8 +261,17 @@ namespace GKTests
         {
             GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
 
+            GKUtils.PrepareHeader(fContext.Tree, "c:\\test.ged", GEDCOMCharacterSet.csUTF8, true);
+            Assert.AreEqual(0, fContext.Tree.Header.FileRevision);
+            GKUtils.PrepareHeader(fContext.Tree, "c:\\test.ged", GEDCOMCharacterSet.csUTF8, false);
+            Assert.AreEqual(1, fContext.Tree.Header.FileRevision);
+
             // individual record tests
             Assert.IsNotNull(iRec);
+
+            GEDCOMCustomDate date = GKUtils.GetBirthDate(iRec);
+            Assert.IsNotNull(date);
+            Assert.AreEqual("28 DEC 1990", date.StringValue);
 
             string age = GKUtils.GetAgeStr(null, 0);
             Assert.AreEqual("", age);
@@ -246,20 +284,13 @@ namespace GKTests
 
             //
 
-            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.FirstOrDefault<int>(null); });
-            int N = GKUtils.FirstOrDefault<int>(new int[] { 5, 7, 10 });
-            Assert.AreEqual(5, N);
+            GKUtils.CollectEventValues(null, null);
 
-            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.LastOrDefault<int>(null); });
-            N = GKUtils.LastOrDefault<int>(new int[] { 5, 7, 10 });
-            Assert.AreEqual(10, N);
+            //
 
-            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.SingleOrDefault<int>(null); });
-            N = GKUtils.SingleOrDefault<int>(new int[] { 11 });
-            Assert.AreEqual(11, N);
-            N = GKUtils.SingleOrDefault<int>(new int[] { });
-            Assert.AreEqual(0, N);
-            Assert.Throws(typeof(Exception), () => { GKUtils.SingleOrDefault<int>(new int[] { 5, 7, 10 }); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.CreateListView(null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.CreateRecordsView(null, null, GEDCOMRecordType.rtIndividual); });
+            //Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.CreateRecordsView(null, null, GEDCOMRecordType.rtIndividual); });
 
             //
 
@@ -272,17 +303,28 @@ namespace GKTests
             Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.InitExtData(null); });
             Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.InitExtCounts(null, 0); });
             Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetFamilyString(null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetFamilyString(null, "", ""); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetNickString(null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetNameString(null, false, false); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.SetMarriedSurname(null, ""); });
             Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetCorresponderStr(null, fContext.Tree.XRefIndex_Find("CM1") as GEDCOMCommunicationRecord, false); });
             Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetCorresponderStr(fContext.Tree, null, false); });
 
-            Assert.AreEqual("", GKUtils.GetDaysForBirth(null));
+            Assert.AreEqual(null, GKUtils.GetDaysForBirth(null));
             Assert.AreEqual("", GKUtils.GetTaskGoalStr(null));
             Assert.AreEqual("", GKUtils.GetGoalStr(GKGoalType.gtIndividual, null));
 
             //
 
             GEDCOMRecord rec = fContext.Tree.XRefIndex_Find("I1");
-            Assert.AreEqual("Ivanov Ivan Ivanovich", GKUtils.GenRecordName(rec, false));
+            Assert.AreEqual("Ivanov Ivan Ivanovich", GKUtils.GetRecordName(rec, false));
+
+            //
+
+            string surname = "", name = "", patronymic = "";
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetRusNameParts(null, out surname, out name, out patronymic); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.SetRusNameParts(null, surname, name, patronymic); });
+            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetNameParts(null, out surname, out name, out patronymic); });
 
             //
 
@@ -333,8 +375,8 @@ namespace GKTests
             st2 = GKUtils.GEDCOMEventToDateStr(evt, DateFormat.dfYYYY_MM_DD, false);
             Assert.AreEqual("1990.12.28", st2);
 
-            evt.Detail.Cause = "test cause";
-            st2 = GKUtils.GetEventCause(evt.Detail);
+            evt.Cause = "test cause";
+            st2 = GKUtils.GetEventCause(evt);
             Assert.AreEqual("test cause", st2);
 
             //
@@ -402,14 +444,6 @@ namespace GKTests
             Assert.IsFalse(res);
 
             GEDCOMListTests(iRec);
-
-            //
-
-            long val = GKUtils.Trunc(495.575);
-            Assert.AreEqual(val, 495);
-
-            Assert.AreEqual(3.0f, GKUtils.SafeDiv(9.0f, 3.0f));
-            Assert.AreEqual(0.0f, GKUtils.SafeDiv(9.0f, 0.0f));
             
             // access tests
             Assert.IsTrue(GKUtils.IsRecordAccess(GEDCOMRestriction.rnNone, ShieldState.None));
@@ -423,16 +457,14 @@ namespace GKTests
             Assert.IsTrue(GKUtils.IsRecordAccess(GEDCOMRestriction.rnNone, ShieldState.Maximum));
             Assert.IsFalse(GKUtils.IsRecordAccess(GEDCOMRestriction.rnConfidential, ShieldState.Maximum));
             Assert.IsFalse(GKUtils.IsRecordAccess(GEDCOMRestriction.rnPrivacy, ShieldState.Maximum));
-            
+
             st1 = GKUtils.HyperLink("@X001@", "test", 0);
-            Assert.AreEqual("~^" + "@X001@" + ":" + "test" + "~", st1);
+            Assert.AreEqual("[url=" + "@X001@" + "]" + "test" + "[/url]", st1);
+
+            st1 = GKUtils.HyperLink("@X001@", "", 0);
+            Assert.AreEqual("[url=" + "@X001@" + "]" + "???" + "[/url]", st1);
 
             //
-
-            int days = GKUtils.DaysBetween(new DateTime(1990, 10, 10), new DateTime(1990, 10, 13));
-            Assert.AreEqual(3, days);
-
-            Assert.AreEqual(31, GKUtils.DaysInAMonth(1990, 5));
 
             Assert.AreEqual(MultimediaKind.mkNone, GKUtils.GetMultimediaKind(GEDCOMMultimediaFormat.mfNone));
             Assert.AreEqual(MultimediaKind.mkImage, GKUtils.GetMultimediaKind(GEDCOMMultimediaFormat.mfBMP));
@@ -443,18 +475,9 @@ namespace GKTests
 
             //
 
-            iRec = fContext.Tree.XRefIndex_Find("I3") as GEDCOMIndividualRecord;
-            string[] surnames = GKUtils.GetSurnames(iRec);
-            Assert.AreEqual(1, surnames.Length);
-            Assert.AreEqual("Ivanova", surnames[0]);
-
-            Assert.Throws(typeof(ArgumentNullException), () => { GKUtils.GetSurnames(null); });
-
-            //
-
             #if !__MonoCS__
-            Assert.AreEqual("test.zip", GKUtils.GetContainerName("c:\\temp\\test.ged", true));
-            Assert.AreEqual("test\\", GKUtils.GetContainerName("c:\\temp\\test.ged", false));
+            Assert.AreEqual("test.zip", GKUtils.GetContainerName("c:\\temp\\test.ged", true)); // archive
+            Assert.AreEqual("test\\", GKUtils.GetContainerName("c:\\temp\\test.ged", false)); // storage
             #endif
 
             //
@@ -464,22 +487,8 @@ namespace GKTests
 
             //
 
-        }
-
-        private class WorkWindowMock : IWorkWindow
-        {
-            public string GetStatusString() { return ""; }
-            public void UpdateView() {}
-            public bool NavCanBackward() { return false; }
-            public bool NavCanForward() { return false; }
-            public void NavNext() {}
-            public void NavPrev() {}
-            public bool AllowQuickFind() { return false; }
-            public IList<ISearchResult> FindAll(string searchPattern) { return new List<ISearchResult>(); }
-            public void QuickFind() {}
-            public void SelectByRec(GEDCOMIndividualRecord iRec) {}
-            public bool AllowFilter() { return false; }
-            public void SetFilter() {}
+            string test = GKUtils.TruncateStrings(new StringList("sample text for truncate"), 10);
+            Assert.AreEqual("sample tex...", test);
         }
 
         [Test]
@@ -510,10 +519,10 @@ namespace GKTests
             for (int k = 0; k < REP_COUNT; k++) {
                 GEDCOMListTest11(iRec);
                 GEDCOMListTest12(iRec);
+                GEDCOMListTest13(iRec);
                 GEDCOMListTest21(iRec);
                 GEDCOMListTest22(iRec);
                 GEDCOMListTest23(iRec);
-                GEDCOMListTest3(iRec);
             }
         }
 
@@ -538,9 +547,16 @@ namespace GKTests
 
         private static void GEDCOMListTest12(GEDCOMIndividualRecord iRec)
         {
-            IGEDCOMListEnumerator enumer = iRec.Events.GetEnumerator();
+            IGEDCOMListEnumerator<GEDCOMCustomEvent> enumer = iRec.Events.GetEnumerator();
             while (enumer.MoveNext()) {
-                GEDCOMCustomEvent evt1 = (GEDCOMCustomEvent)enumer.Current;
+                GEDCOMCustomEvent evt1 = enumer.Current;
+                evt1.GetHashCode();
+            }
+        }
+
+        private static void GEDCOMListTest13(GEDCOMIndividualRecord iRec)
+        {
+            foreach (GEDCOMCustomEvent evt1 in iRec.Events) {
                 evt1.GetHashCode();
             }
         }
@@ -570,76 +586,165 @@ namespace GKTests
             }
         }
 
-        private static void GEDCOMListTest3(GEDCOMIndividualRecord iRec)
-        {
-            iRec.Events.ForEach(x => { x.GetHashCode(); });
-        }
-
-        [Test]
+        [Test(Description = "Cultures test")]
         public void Cultures_Tests()
         {
+            GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I3") as GEDCOMIndividualRecord;
+
             ICulture culture = new RussianCulture();
             Assert.IsNotNull(culture);
             Assert.IsTrue(culture.HasPatronymic());
             Assert.IsTrue(culture.HasSurname());
+            //
+            string[] surnames = culture.GetSurnames(iRec);
+            Assert.AreEqual(1, surnames.Length);
+            Assert.AreEqual("Ivanova", surnames[0]);
+            Assert.Throws(typeof(ArgumentNullException), () => { culture.GetSurnames(null); });
+
 
             culture = new AncientCulture();
             Assert.IsNotNull(culture);
             Assert.IsFalse(culture.HasPatronymic());
             Assert.IsFalse(culture.HasSurname());
+            Assert.AreEqual("Alef", culture.NormalizeSurname("Alef", false));
+            Assert.AreEqual("Alef", culture.GetMarriedSurname("Alef"));
+            Assert.AreEqual(GEDCOMSex.svUndetermined, culture.GetSex("Alef", "", false));
+            //
+            surnames = culture.GetSurnames(iRec);
+            Assert.AreEqual(1, surnames.Length);
+            Assert.AreEqual("Ivanova", surnames[0]);
+            Assert.Throws(typeof(ArgumentNullException), () => { culture.GetSurnames(null); });
+            Assert.AreEqual("Ivanov Ivan", culture.GetPossessiveName("Ivanov Ivan"));
+
 
             culture = new IcelandCulture();
             Assert.IsNotNull(culture);
             Assert.IsTrue(culture.HasPatronymic());
             Assert.IsFalse(culture.HasSurname());
+            Assert.AreEqual("Alef", culture.NormalizeSurname("Alef", false));
+            Assert.AreEqual("Alef", culture.GetMarriedSurname("Alef"));
+            Assert.AreEqual(GEDCOMSex.svUndetermined, culture.GetSex("Alef", "", false));
+            //
+            surnames = culture.GetSurnames(iRec);
+            Assert.AreEqual(1, surnames.Length);
+            Assert.AreEqual("Ivanova", surnames[0]);
+            Assert.Throws(typeof(ArgumentNullException), () => { culture.GetSurnames(null); });
+            Assert.AreEqual("Ivanov Ivan", culture.GetPossessiveName("Ivanov Ivan"));
+
+
+            culture = new BritishCulture();
+            Assert.IsNotNull(culture);
+            Assert.IsFalse(culture.HasPatronymic());
+            Assert.IsTrue(culture.HasSurname());
+            Assert.AreEqual("Alef", culture.NormalizeSurname("Alef", false));
+            Assert.AreEqual("Alef", culture.GetMarriedSurname("Alef"));
+            Assert.AreEqual(GEDCOMSex.svUndetermined, culture.GetSex("Alef", "", false));
+            //
+            surnames = culture.GetSurnames(iRec);
+            Assert.AreEqual(1, surnames.Length);
+            Assert.AreEqual("Ivanova", surnames[0]);
+            Assert.Throws(typeof(ArgumentNullException), () => { culture.GetSurnames(null); });
+            Assert.AreEqual("Ivanov Ivan", culture.GetPossessiveName("Ivanov Ivan"));
+
+
+            culture = new SwedishCulture();
+            Assert.IsNotNull(culture);
+            Assert.IsFalse(culture.HasPatronymic());
+            Assert.IsTrue(culture.HasSurname());
+            Assert.AreEqual("Alef", culture.NormalizeSurname("Alef", false));
+            Assert.AreEqual("Alef", culture.GetMarriedSurname("Alef"));
+            Assert.AreEqual(GEDCOMSex.svUndetermined, culture.GetSex("Alef", "", false));
+            //
+            surnames = culture.GetSurnames(iRec);
+            Assert.AreEqual(1, surnames.Length);
+            Assert.AreEqual("Ivanova", surnames[0]);
+            Assert.Throws(typeof(ArgumentNullException), () => { culture.GetSurnames(null); });
+            Assert.AreEqual("Ivanov Ivan", culture.GetPossessiveName("Ivanov Ivan"));
+
+            //
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.German;
+            Assert.IsInstanceOf(typeof(GermanCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Polish;
+            Assert.IsInstanceOf(typeof(PolishCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Swedish;
+            Assert.IsInstanceOf(typeof(SwedishCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Icelandic;
+            Assert.IsInstanceOf(typeof(IcelandCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Russian;
+            Assert.IsInstanceOf(typeof(RussianCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Ukrainian;
+            Assert.IsInstanceOf(typeof(RussianCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Armenian;
+            Assert.IsInstanceOf(typeof(ArmenianCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Turkish;
+            Assert.IsInstanceOf(typeof(TurkishCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.French;
+            Assert.IsInstanceOf(typeof(FrenchCulture), fContext.Culture);
+
+            fContext.Tree.Header.Language.Value = GEDCOMLanguageID.Italian;
+            Assert.IsInstanceOf(typeof(ItalianCulture), fContext.Culture);
         }
 
         [Test]
         public void RussianCulture_Tests()
         {
-            Assert.AreEqual("", GKUtils.ClearSurname(null));
-            Assert.AreEqual("", GKUtils.ClearSurname(""));
-            Assert.AreEqual("Иванова", GKUtils.ClearSurname("Иванова (Петрова)"));
-            Assert.AreEqual("Иванов", RussianCulture.PrepareRusSurname("Иванова", true));
-            Assert.AreEqual("Бельский", RussianCulture.PrepareRusSurname("Бельская", true));
-            Assert.AreEqual("Грозный", RussianCulture.PrepareRusSurname("Грозная", true));
-            Assert.AreEqual("Иванов", RussianCulture.PrepareRusSurname("Иванов", false));
-            Assert.AreEqual("Бельский", RussianCulture.PrepareRusSurname("Бельский", false));
-            Assert.AreEqual("Грозный", RussianCulture.PrepareRusSurname("Грозный", false));
+            RussianCulture rusCulture = new RussianCulture();
 
-            Assert.AreEqual("?", RussianCulture.PrepareRusSurname(null, false));
-            Assert.AreEqual("?", RussianCulture.PrepareRusSurname("", false));
-            Assert.AreEqual("?", RussianCulture.PrepareRusSurname("(Иванова)", false));
+            //Assert.AreEqual("", GKUtils.GetMaidenSurname(null));
+            //Assert.AreEqual("", GKUtils.GetMaidenSurname(""));
+            //Assert.AreEqual("Иванова", GKUtils.GetMaidenSurname("Иванова (Петрова)"));
 
-            Assert.AreEqual("Иванова", RussianCulture.GetRusWifeSurname("Иванов"));
-            Assert.AreEqual("Бельская", RussianCulture.GetRusWifeSurname("Бельский"));
-            Assert.AreEqual("Грозная", RussianCulture.GetRusWifeSurname("Грозный"));
+            Assert.AreEqual("Иванов", rusCulture.NormalizeSurname("Иванова", true));
+            Assert.AreEqual("Бельский", rusCulture.NormalizeSurname("Бельская", true));
+            Assert.AreEqual("Грозный", rusCulture.NormalizeSurname("Грозная", true));
+            Assert.AreEqual("Иванов", rusCulture.NormalizeSurname("Иванов", false));
+            Assert.AreEqual("Бельский", rusCulture.NormalizeSurname("Бельский", false));
+            Assert.AreEqual("Грозный", rusCulture.NormalizeSurname("Грозный", false));
 
-            Assert.AreEqual("?", RussianCulture.GetRusWifeSurname(""));
-            Assert.AreEqual("?", RussianCulture.GetRusWifeSurname(null));
+            Assert.AreEqual("?", rusCulture.NormalizeSurname(null, false));
+            Assert.AreEqual("?", rusCulture.NormalizeSurname("", false));
+            Assert.AreEqual("?", rusCulture.NormalizeSurname("(Иванова)", false));
 
-            string[] snms = GKUtils.GetSurnames("Бельская (Иванова)", true);
+            Assert.AreEqual("Иванова", rusCulture.GetMarriedSurname("Иванов"));
+            Assert.AreEqual("Бельская", rusCulture.GetMarriedSurname("Бельский"));
+            Assert.AreEqual("Грозная", rusCulture.GetMarriedSurname("Грозный"));
+
+            Assert.AreEqual("?", rusCulture.GetMarriedSurname(""));
+            Assert.AreEqual("?", rusCulture.GetMarriedSurname(null));
+
+            string[] snms = rusCulture.GetSurnames("Бельская (Иванова)", true);
             Assert.AreEqual(2, snms.Length);
             Assert.AreEqual("Бельский", snms[0]);
             Assert.AreEqual("Иванов", snms[1]);
 
-            snms = GKUtils.GetSurnames("Бельская", true);
+            snms = rusCulture.GetSurnames("Бельская", true);
             Assert.AreEqual(1, snms.Length);
             Assert.AreEqual("Бельский", snms[0]);
 
-            snms = GKUtils.GetSurnames("Бельский", false);
+            snms = rusCulture.GetSurnames("Бельский", false);
             Assert.AreEqual(1, snms.Length);
             Assert.AreEqual("Бельский", snms[0]);
 
             //
 
-            GEDCOMSex sx = RussianCulture.GetSex("Мария", "Петровна", false);
+            GEDCOMSex sx = rusCulture.GetSex("Мария", "Петровна", false);
             Assert.AreEqual(GEDCOMSex.svFemale, sx);
 
-            sx = RussianCulture.GetSex("Иван", "Петрович", false);
+            sx = rusCulture.GetSex("Иван", "Петрович", false);
             Assert.AreEqual(GEDCOMSex.svMale, sx);
 
-            Assert.AreEqual(GEDCOMSex.svNone, RussianCulture.GetSex("", "", false));
+            Assert.AreEqual(GEDCOMSex.svNone, rusCulture.GetSex("", "", false));
+
+            Assert.AreEqual("Иванова Ивана Ивановича", rusCulture.GetPossessiveName("Иванов Иван Иванович"));
         }
 
         [Test]
@@ -653,11 +758,67 @@ namespace GKTests
 
             rel = KinshipsMan.FindKinship(RelationKind.rkNone, RelationKind.rkSon, out great, out level);
             Assert.AreEqual(RelationKind.rkSon, rel);
+
+            GEDCOMIndividualRecord indRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
+            GEDCOMIndividualRecord chldRec = fContext.Tree.XRefIndex_Find("I3") as GEDCOMIndividualRecord;
+            GEDCOMIndividualRecord otherRec = fContext.Tree.XRefIndex_Find("I4") as GEDCOMIndividualRecord;
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.SearchKinshipsGraph(fContext, null); });
+
+            using (KinshipsGraph kinsGraph = TreeTools.SearchKinshipsGraph(fContext, indRec)) {
+                Assert.IsNull(kinsGraph.AddIndividual(null));
+
+                Assert.IsNotNull(kinsGraph.FindVertex(chldRec.XRef));
+
+                // check invalid args
+                kinsGraph.SetTreeRoot(null);
+                kinsGraph.SetTreeRoot(otherRec);
+
+                // valid individual
+                kinsGraph.SetTreeRoot(indRec);
+
+                Assert.AreEqual("???", kinsGraph.GetRelationship(null));
+                Assert.AreEqual("???", kinsGraph.GetRelationship(otherRec));
+
+                string result = kinsGraph.GetRelationship(chldRec);
+                Assert.AreEqual("daughter", result);
+
+                Assert.IsFalse(kinsGraph.IsEmpty());
+                kinsGraph.Clear();
+                Assert.IsTrue(kinsGraph.IsEmpty());
+            }
+        }
+
+        [Test]
+        public void DateItems_Tests()
+        {
+            var dtx1 = new GEDCOMDateValue(null, null, "DATE", "05 JAN 2013");
+            var dtItem1 = new GEDCOMDateItem(dtx1);
+
+            var dtx2 = new GEDCOMDateValue(null, null, "DATE", "17 FEB 2013");
+            var dtItem2 = new GEDCOMDateItem(dtx2);
+
+            Assert.AreEqual(0, dtItem1.CompareTo(dtItem1));
+            Assert.AreEqual(-1, dtItem1.CompareTo(dtItem2));
+            Assert.AreEqual(-1, dtItem1.CompareTo(null));
+            Assert.AreEqual(+1, dtItem2.CompareTo(dtItem1));
+
+            dtItem1 = new GEDCOMDateItem(dtx1);
+            dtItem2 = new GEDCOMDateItem(null);
+            Assert.AreEqual(-1, dtItem1.CompareTo(dtItem2));
+
+            dtItem1 = new GEDCOMDateItem(null);
+            dtItem2 = new GEDCOMDateItem(dtx2);
+            Assert.AreEqual(+1, dtItem1.CompareTo(dtItem2));
+
+            dtItem1 = new GEDCOMDateItem(null);
+            dtItem2 = new GEDCOMDateItem(null);
+            Assert.AreEqual(0, dtItem1.CompareTo(dtItem2));
         }
 
         private class ListViewMock : IListView
         {
-            public void AddListColumn(string caption, int width, bool autoSize) {}
+            public void AddColumn(string caption, int width, bool autoSize) {}
         }
 
         private bool ExtFilterHandler(GEDCOMRecord record)
@@ -668,26 +829,11 @@ namespace GKTests
         [Test]
         public void Lists_Tests()
         {
-            //
-            ColumnProps colProps = new ColumnProps();
-            Assert.IsNotNull(colProps);
-
-            colProps = new ColumnProps(0, false, 10);
-            Assert.IsNotNull(colProps);
-            Assert.AreEqual(0, colProps.ColType);
-            Assert.AreEqual(false, colProps.ColActive);
-            Assert.AreEqual(10, colProps.ColWidth);
-
-            ColumnProps colProps2 = new ColumnProps();
-            colProps2.Assign(null);
-            colProps2.Assign(colProps);
-            Assert.AreEqual(0, colProps.ColType);
-            Assert.AreEqual(false, colProps.ColActive);
-            Assert.AreEqual(10, colProps.ColWidth);
-
-            //
-            ColumnStatic colStatic = new ColumnStatic();
+            ListColumn colStatic = new ListColumn(0, 0, DataType.dtString, 0, true);
             Assert.IsNotNull(colStatic);
+            Assert.AreEqual(0, colStatic.Order);
+            Assert.AreEqual(false, colStatic.CurActive);
+            Assert.AreEqual(0, colStatic.CurWidth);
 
             //
             ListFilter listFilter = new ListFilter();
@@ -701,9 +847,8 @@ namespace GKTests
             GKListItem listItem;
 
             //
-            listManager = new GroupListMan(this.fContext.Tree);
+            listManager = new GroupListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(GroupColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMGroupRecord grpRec = fContext.Tree.XRefIndex_Find("G1") as GEDCOMGroupRecord;
             listManager.Fetch(grpRec);
@@ -729,13 +874,21 @@ namespace GKTests
             Assert.Throws(typeof(ArgumentNullException), () => { listColumns.CopyTo(null); });
 
             listManager.QuickFilter = "*";
-            listManager.AddCondition(GroupColumnType.gctName, ConditionKind.ck_Contains, "*roup*");
+            listManager.AddCondition((byte)GroupColumnType.ctName, ConditionKind.ck_Contains, "*roup*");
             Assert.IsTrue(listManager.CheckFilter(ShieldState.None));
+        }
 
-            //
-            listManager = new CommunicationListMan(this.fContext.Tree);
+        [Test]
+        public void LM_Tests()
+        {
+            
+        }
+
+        [Test]
+        public void LMCommunication_Tests()
+        {
+            var listManager = new CommunicationListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(CommunicationColumnType), listManager.ListColumns.GetColumnsEnum());
 
             listManager.ExternalFilter = null;
             Assert.IsNull(listManager.ExternalFilter);
@@ -750,14 +903,17 @@ namespace GKTests
             listManager.QuickFilter = "*alpha*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new FamilyListMan(this.fContext.Tree);
+        [Test]
+        public void LMFamily_Tests()
+        {
+            var listManager = new FamilyListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(FamilyColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMFamilyRecord famRec = fContext.Tree.XRefIndex_Find("F1") as GEDCOMFamilyRecord;
             listManager.Fetch(famRec);
@@ -769,14 +925,17 @@ namespace GKTests
             listManager.QuickFilter = "*alpha*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new IndividualListMan(this.fContext.Tree);
+        [Test]
+        public void LMIndividual_Tests()
+        {
+            var listManager = new IndividualListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(PersonColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMIndividualRecord indRec = fContext.Tree.XRefIndex_Find("I4") as GEDCOMIndividualRecord;
             listManager.Fetch(indRec);
@@ -793,9 +952,11 @@ namespace GKTests
             listManager.InitFilter();
             listManager.ExternalFilter = ExtFilterHandler;
 
+            var lvMock = new ListViewMock();
+
             GlobalOptions.Instance.DefNameFormat = NameFormat.nfFNP;
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
 
             GlobalOptions.Instance.DefNameFormat = NameFormat.nfF_NP;
@@ -807,11 +968,13 @@ namespace GKTests
             listManager.UpdateColumns(lvMock, true);
             listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new LocationListMan(this.fContext.Tree);
+        [Test]
+        public void LMLocation_Tests()
+        {
+            var listManager = new LocationListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(LocationColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMLocationRecord locRec = fContext.Tree.XRefIndex_Find("L1") as GEDCOMLocationRecord;
             listManager.Fetch(locRec);
@@ -823,14 +986,17 @@ namespace GKTests
             listManager.QuickFilter = "*xxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new MultimediaListMan(this.fContext.Tree);
+        [Test]
+        public void LMMultimedia_Tests()
+        {
+            var listManager = new MultimediaListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(MultimediaColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMMultimediaRecord mediaRec = fContext.Tree.XRefIndex_Find("O1") as GEDCOMMultimediaRecord;
             listManager.Fetch(mediaRec);
@@ -842,14 +1008,17 @@ namespace GKTests
             listManager.QuickFilter = "*xxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new NoteListMan(this.fContext.Tree);
+        [Test]
+        public void LMNote_Tests()
+        {
+            var listManager = new NoteListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(NoteColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMNoteRecord noteRec = new GEDCOMNoteRecord(null, null, "", "");
             noteRec.AddNoteText("Test text");
@@ -862,16 +1031,19 @@ namespace GKTests
             listManager.QuickFilter = "*xxxxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
             noteRec.Clear();
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new RepositoryListMan(this.fContext.Tree);
+        [Test]
+        public void LMRepository_Tests()
+        {
+            var listManager = new RepositoryListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(RepositoryColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMRepositoryRecord repoRec = fContext.Tree.XRefIndex_Find("R1") as GEDCOMRepositoryRecord;
             listManager.Fetch(repoRec);
@@ -883,14 +1055,17 @@ namespace GKTests
             listManager.QuickFilter = "*xxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new ResearchListMan(this.fContext.Tree);
+        [Test]
+        public void LMResearch_Tests()
+        {
+            var listManager = new ResearchListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(ResearchColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMResearchRecord resRec = fContext.Tree.XRefIndex_Find("RS1") as GEDCOMResearchRecord;
             listManager.Fetch(resRec);
@@ -902,14 +1077,17 @@ namespace GKTests
             listManager.QuickFilter = "*xxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new SourceListMan(this.fContext.Tree);
+        [Test]
+        public void LMSource_Tests()
+        {
+            var listManager = new SourceListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(SourceColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMSourceRecord srcRec = fContext.Tree.XRefIndex_Find("S1") as GEDCOMSourceRecord;
             listManager.Fetch(srcRec);
@@ -921,14 +1099,17 @@ namespace GKTests
             listManager.QuickFilter = "*xxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
+        }
 
-            //
-            listManager = new TaskListMan(this.fContext.Tree);
+        [Test]
+        public void LMTask_Tests()
+        {
+            var listManager = new TaskListMan(fContext.Tree);
             Assert.IsNotNull(listManager);
-            Assert.AreEqual(typeof(TaskColumnType), listManager.ListColumns.GetColumnsEnum());
 
             GEDCOMTaskRecord tskRec = fContext.Tree.XRefIndex_Find("TK1") as GEDCOMTaskRecord;
             listManager.Fetch(tskRec);
@@ -940,15 +1121,16 @@ namespace GKTests
             listManager.QuickFilter = "*xxxx*";
             Assert.IsFalse(listManager.CheckFilter(ShieldState.None));
 
+            var lvMock = new ListViewMock();
             listManager.UpdateColumns(lvMock, true);
-            listItem = new GKListItem("", null);
+            var listItem = new GKListItem("", null);
             listManager.UpdateItem(listItem, true);
         }
 
         [Test]
         public void Maps_Tests()
         {
-            GMapPoint mapPoint = new GMapPoint(0.5f, 0.5f, "test");
+            GeoPoint mapPoint = new GeoPoint(0.5f, 0.5f, "test");
             Assert.IsNotNull(mapPoint);
             Assert.AreEqual(0.5f, mapPoint.Latitude);
             Assert.AreEqual(0.5f, mapPoint.Longitude);
@@ -970,23 +1152,151 @@ namespace GKTests
         [Test]
         public void Options_Tests()
         {
-            //GlobalOptions globalOptions = new GlobalOptions();
-            //Assert.IsNotNull(globalOptions);
+            using (IniFile iniFile = new IniFile()) {
+                GlobalOptions globalOptions = GlobalOptions.Instance;
+                Assert.IsNotNull(globalOptions);
 
-            MRUFile mruFile = new MRUFile();
-            Assert.IsNotNull(mruFile);
+                Assert.IsNotNull(globalOptions.ChartOptions);
+                Assert.IsNotNull(globalOptions.AncestorsCircleOptions);
 
-            mruFile = new MRUFile("test.ged");
-            Assert.IsNotNull(mruFile);
+                /*globalOptions.DefCharacterSet = GEDCOMCharacterSet.csUNICODE;
+                Assert.AreEqual(GEDCOMCharacterSet.csUNICODE, globalOptions.DefCharacterSet);*/
+                Assert.AreEqual(GEDCOMCharacterSet.csUTF8, globalOptions.DefCharacterSet);
 
-            PedigreeOptions pedigreeOptions = new PedigreeOptions();
-            Assert.IsNotNull(pedigreeOptions);
+                globalOptions.DefDateFormat = DateFormat.dfDD_MM_YYYY;
+                Assert.AreEqual(DateFormat.dfDD_MM_YYYY, globalOptions.DefDateFormat);
 
-            ProxyOptions proxyOptions = new ProxyOptions();
-            Assert.IsNotNull(proxyOptions);
+                globalOptions.ShowDatesSign = true;
+                Assert.AreEqual(true, globalOptions.ShowDatesSign);
 
-            TreeChartOptions treeChartOptions = new TreeChartOptions();
-            Assert.IsNotNull(treeChartOptions);
+                globalOptions.DefNameFormat = NameFormat.nfF_N_P;
+                Assert.AreEqual(NameFormat.nfF_N_P, globalOptions.DefNameFormat);
+
+                Assert.IsNotNull(globalOptions.EventFilters);
+
+                globalOptions.InterfaceLang = 1000;
+                Assert.AreEqual(1000, globalOptions.InterfaceLang);
+
+                globalOptions.LastDir = "c:\\";
+                Assert.AreEqual("c:\\", globalOptions.LastDir);
+
+                Assert.IsNotNull(globalOptions.MRUFiles);
+
+                globalOptions.MWinRect = ExtRect.CreateEmpty();
+                Assert.IsTrue(globalOptions.MWinRect.IsEmpty());
+
+                globalOptions.MWinState = FormWindowState.Maximized;
+                Assert.AreEqual(FormWindowState.Maximized, globalOptions.MWinState);
+
+                Assert.IsNotNull(globalOptions.NameFilters);
+
+                Assert.IsNotNull(globalOptions.PedigreeOptions);
+
+                globalOptions.PlacesWithAddress = true;
+                Assert.AreEqual(true, globalOptions.PlacesWithAddress);
+
+                Assert.IsNotNull(globalOptions.Proxy);
+
+                Assert.IsNotNull(globalOptions.Relations);
+
+                Assert.IsNotNull(globalOptions.ResidenceFilters);
+
+                globalOptions.FileBackup = FileBackup.fbOnlyPrev;
+                Assert.AreEqual(FileBackup.fbOnlyPrev, globalOptions.FileBackup);
+
+                globalOptions.ShowTips = true;
+                Assert.AreEqual(true, globalOptions.ShowTips);
+
+                globalOptions.ListHighlightUnmarriedPersons = true;
+                Assert.AreEqual(true, globalOptions.ListHighlightUnmarriedPersons);
+
+                globalOptions.ListHighlightUnparentedPersons = true;
+                Assert.AreEqual(true, globalOptions.ListHighlightUnparentedPersons);
+
+                Assert.IsNotNull(globalOptions.IndividualListColumns);
+
+                globalOptions.ShowDatesCalendar = true;
+                Assert.AreEqual(true, globalOptions.ShowDatesCalendar);
+
+                globalOptions.Autosave = true;
+                Assert.AreEqual(true, globalOptions.Autosave);
+
+                globalOptions.AutosaveInterval = 10;
+                Assert.AreEqual(10, globalOptions.AutosaveInterval);
+
+                globalOptions.ExtendedNames = true;
+                Assert.AreEqual(true, globalOptions.ExtendedNames);
+
+                globalOptions.WomanSurnameFormat = WomanSurnameFormat.wsfMaiden;
+                Assert.AreEqual(WomanSurnameFormat.wsfMaiden, globalOptions.WomanSurnameFormat);
+
+                globalOptions.AddLastBase("sample.ged");
+                Assert.AreEqual(1, globalOptions.GetLastBasesCount());
+                Assert.AreEqual("sample.ged", globalOptions.GetLastBase(0));
+                globalOptions.ClearLastBases();
+
+                Assert.IsNotNull(globalOptions.Languages);
+
+
+                globalOptions.SaveToFile(iniFile);
+                globalOptions.LoadFromFile(iniFile);
+                //Assert.Throws(typeof(ArgumentNullException), () => { globalOptions.SaveToFile(null); });
+                //Assert.Throws(typeof(ArgumentNullException), () => { globalOptions.LoadFromFile(null); });
+
+
+                MRUFile mruFile = new MRUFile();
+                Assert.IsNotNull(mruFile);
+
+                mruFile = new MRUFile("test.ged");
+                Assert.IsNotNull(mruFile);
+                Assert.AreEqual(-1, globalOptions.MRUFiles_IndexOf("test.ged"));
+                globalOptions.MRUFiles.Add(mruFile);
+                Assert.AreEqual(0, globalOptions.MRUFiles_IndexOf("test.ged"));
+
+
+                mruFile.SaveToFile(iniFile, "xxx");
+                mruFile.LoadFromFile(iniFile, "xxx");
+                MRUFile.DeleteKeys(iniFile, "xxx");
+                Assert.Throws(typeof(ArgumentNullException), () => { mruFile.SaveToFile(null, "xxx"); });
+                Assert.Throws(typeof(ArgumentNullException), () => { mruFile.LoadFromFile(null, "xxx"); });
+                Assert.Throws(typeof(ArgumentNullException), () => { MRUFile.DeleteKeys(null, "xxx"); });
+
+                AncestorsCircleOptions circleOptions = new AncestorsCircleOptions();
+                Assert.IsNotNull(circleOptions);
+                circleOptions.Assign(null);
+                circleOptions.Assign(new AncestorsCircleOptions());
+                circleOptions.SaveToFile(iniFile);
+                circleOptions.LoadFromFile(iniFile);
+                Assert.Throws(typeof(ArgumentNullException), () => { circleOptions.SaveToFile(null); });
+                Assert.Throws(typeof(ArgumentNullException), () => { circleOptions.LoadFromFile(null); });
+
+                PedigreeOptions pedigreeOptions = new PedigreeOptions();
+                Assert.IsNotNull(pedigreeOptions);
+                pedigreeOptions.Assign(null);
+                pedigreeOptions.Assign(new PedigreeOptions());
+                pedigreeOptions.SaveToFile(iniFile);
+                pedigreeOptions.LoadFromFile(iniFile);
+                Assert.Throws(typeof(ArgumentNullException), () => { pedigreeOptions.SaveToFile(null); });
+                Assert.Throws(typeof(ArgumentNullException), () => { pedigreeOptions.LoadFromFile(null); });
+
+                ProxyOptions proxyOptions = new ProxyOptions();
+                Assert.IsNotNull(proxyOptions);
+                proxyOptions.Assign(null);
+                proxyOptions.Assign(new ProxyOptions());
+                proxyOptions.SaveToFile(iniFile);
+                proxyOptions.LoadFromFile(iniFile);
+                Assert.Throws(typeof(ArgumentNullException), () => { proxyOptions.SaveToFile(null); });
+                Assert.Throws(typeof(ArgumentNullException), () => { proxyOptions.LoadFromFile(null); });
+
+                TreeChartOptions treeChartOptions = new TreeChartOptions();
+                Assert.IsNotNull(treeChartOptions);
+                treeChartOptions.Assign(null);
+                treeChartOptions.Assign(new TreeChartOptions());
+                treeChartOptions.SaveToFile(iniFile);
+                treeChartOptions.LoadFromFile(iniFile);
+                Assert.Throws(typeof(ArgumentNullException), () => { treeChartOptions.SaveToFile(null); });
+                Assert.Throws(typeof(ArgumentNullException), () => { treeChartOptions.LoadFromFile(null); });
+            }
         }
 
         [Test]
@@ -1024,21 +1334,21 @@ namespace GKTests
                 selectedRecords.Add(current);
             }
 
-            TreeStats treeStats = new TreeStats(fContext.Tree, selectedRecords);
+            TreeStats treeStats = new TreeStats(fContext, selectedRecords);
             Assert.IsNotNull(treeStats);
 
             CommonStats commonStats = treeStats.GetCommonStats();
             Assert.IsNotNull(commonStats);
-            Assert.AreEqual(4, commonStats.persons, "Stats.TotalPersons");
+            Assert.AreEqual(5, commonStats.persons, "Stats.TotalPersons");
             Assert.AreEqual(2, commonStats.persons_m, "Stats.SumM");
-            Assert.AreEqual(2, commonStats.persons_f, "Stats.SumF");
+            Assert.AreEqual(3, commonStats.persons_f, "Stats.SumF");
 
             List<StatsItem> values = new List<StatsItem>();
 
             treeStats.GetSpecStats(StatsMode.smAncestors, values);
             treeStats.GetSpecStats(StatsMode.smDescendants, values);
             treeStats.GetSpecStats(StatsMode.smDescGenerations, values);
-            treeStats.GetSpecStats(StatsMode.smFamilies, values);
+            treeStats.GetSpecStats(StatsMode.smSurnames, values);
             treeStats.GetSpecStats(StatsMode.smNames, values);
             treeStats.GetSpecStats(StatsMode.smPatronymics, values);
             treeStats.GetSpecStats(StatsMode.smAge, values);
@@ -1077,7 +1387,11 @@ namespace GKTests
         [Test]
         public void Tools_Tests()
         {
-            PlaceObj placeObj = new PlaceObj();
+            IBaseWindow baseWin = new BaseWindowMock();
+
+            //
+
+            PlaceObj placeObj = new PlaceObj(null);
             Assert.IsNotNull(placeObj);
             Assert.AreEqual(null, placeObj.Name);
             Assert.IsNotNull(placeObj.Facts);
@@ -1085,27 +1399,92 @@ namespace GKTests
             placeObj.Dispose();
             Assert.IsNotNull(placeObj);
 
+            //
+
             GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
             Assert.IsNotNull(iRec);
+
+            //
 
             List<GEDCOMRecord> walkList = new List<GEDCOMRecord>();
             TreeTools.TreeWalk(iRec, TreeTools.TreeWalkMode.twmAll, walkList);
             Assert.AreEqual(3, walkList.Count, "TreeTools.TreeWalk(twmAll)"); // 3 linked from 4 total
 
-            //ValuesCollection valuesCollection = new ValuesCollection();
-            //ProgressMock progress = new ProgressMock();
-            //TreeTools.CheckGEDCOMFormat(fContext.Tree, valuesCollection, progress);
-
             Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.TreeWalk(null, TreeTools.TreeWalkMode.twmAll, null); });
             Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.TreeWalk(iRec, TreeTools.TreeWalkMode.twmAll, null); });
-        }
 
-        private class ProgressMock : IProgressController
-        {
-            public void ProgressInit(string title, int max) {}
-            public void ProgressDone() {}
-            public void ProgressStep() {}
-            public void ProgressStep(int value) {}
+            //
+
+            List<TreeTools.CheckObj> checksList = new List<TreeTools.CheckObj>();
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.CheckBase(null, checksList); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.CheckBase(baseWin, null); });
+
+            TreeTools.CheckBase(baseWin, checksList);
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.GenPatriarchsGraphviz(null, "", 0, false); });
+            //string filename = GKUtils.GetTempDir() + "test.gvf";
+            //if (File.Exists(filename)) File.Delete(filename); // for local tests!
+            //TreeTools.GenPatriarchsGraphviz(baseWin, filename, 0, false);
+
+            //
+
+            ValuesCollection valuesCollection = new ValuesCollection();
+            ProgressMock progress = new ProgressMock();
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.CheckGEDCOMFormat(null, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.CheckGEDCOMFormat(fContext.Tree, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.CheckGEDCOMFormat(fContext.Tree, valuesCollection, null); });
+            TreeTools.CheckGEDCOMFormat(fContext.Tree, valuesCollection, progress);
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.TreeMerge(null, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.TreeMerge(fContext.Tree, null, null); });
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.RepairProblem(null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.RepairProblem(baseWin, null); });
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.CheckRelations(null); });
+            List<GEDCOMRecord> splitList = new List<GEDCOMRecord>();
+            splitList.Add(iRec);
+            TreeTools.CheckRelations(splitList);
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.GetUnlinkedNamesakes(null); });
+            List<TreeTools.ULIndividual> uln = TreeTools.GetUnlinkedNamesakes(baseWin);
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.FindDuplicates(null, null, 0.0f, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.FindDuplicates(fContext.Tree, null, 0.0f, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.FindDuplicates(null, fContext.Tree, 0.0f, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.FindDuplicates(fContext.Tree, fContext.Tree, 0.0f, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.FindDuplicates(fContext.Tree, fContext.Tree, 0.0f, null, progress); });
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.TreeCompare(null, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.TreeCompare(fContext, null, null); });
+
+            //
+
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.PlacesSearch_Clear(null); });
+
+            StringList placesList = new StringList();
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.PlacesSearch(null, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.PlacesSearch(fContext.Tree, null, null); });
+            Assert.Throws(typeof(ArgumentNullException), () => { TreeTools.PlacesSearch(fContext.Tree, placesList, null); });
+
+            TreeTools.PlacesSearch(fContext.Tree, placesList, baseWin);
+            Assert.IsTrue(placesList.IndexOf("Ivanovo") >= 0); // <- TestStubs
+            Assert.IsTrue(placesList.IndexOf("unknown") >= 0); // <- TestStubs
+            Assert.IsTrue(placesList.IndexOf("Far Forest") >= 0); // <- TestStubs
         }
 
         [Test]
@@ -1215,6 +1594,11 @@ namespace GKTests
             using (TreeChartPerson tcPerson = new TreeChartPerson(null)) {
                 Assert.IsNotNull(tcPerson);
 
+                bool hasFail = false;
+                tcPerson.BuildBy(null, ref hasFail);
+
+                Assert.AreEqual(null, tcPerson.Rec);
+
                 Assert.AreEqual(null, tcPerson.Portrait);
                 Assert.AreEqual(0, tcPerson.PortraitWidth);
 
@@ -1244,9 +1628,6 @@ namespace GKTests
                 tcPerson.PtY = 22;
                 Assert.AreEqual(22, tcPerson.PtY);
 
-                Assert.AreEqual(null, tcPerson.Rec);
-                //Assert.AreEqual(null, tcPerson.Rect);
-
                 tcPerson.Selected = false;
                 Assert.AreEqual(false, tcPerson.Selected);
                 tcPerson.Selected = true;
@@ -1256,8 +1637,8 @@ namespace GKTests
                 tcPerson.Sex = GEDCOMSex.svMale;
                 Assert.AreEqual(GEDCOMSex.svMale, tcPerson.Sex);
 
-                //EnumSet<SpecialUserRef> enums = tcPerson.Signs;
-                //Assert.IsTrue(enums.IsEmpty());
+                EnumSet<SpecialUserRef> enums = tcPerson.Signs;
+                Assert.IsTrue(enums.IsEmpty());
 
                 Assert.AreEqual(0, tcPerson.GetChildsCount());
                 Assert.AreEqual(0, tcPerson.GetSpousesCount());
@@ -1280,6 +1661,9 @@ namespace GKTests
 
                 bool hasMediaFail = false;
                 tcPerson.BuildBy(null, ref hasMediaFail);
+
+                ExtRect psnRt = tcPerson.Rect;
+                Assert.IsTrue(psnRt.IsEmpty());
 
                 //Assert.AreEqual(null, tcPerson.Portrait);
                 //Assert.AreEqual(null, tcPerson.Portrait);
@@ -1311,6 +1695,215 @@ namespace GKTests
 
             ModifyEventArgs args = new ModifyEventArgs(RecordAction.raAdd, null);
             Assert.IsNotNull(args);
+        }
+
+        [Test]
+        public void UI_Utils_Tests()
+        {
+            StringList summary = new StringList();
+
+            summary.Clear();
+            GKUtils.ShowFamilyInfo(null, null, ShieldState.None);
+            GEDCOMFamilyRecord famRec = fContext.Tree.XRefIndex_Find("F1") as GEDCOMFamilyRecord;
+            GKUtils.ShowFamilyInfo(famRec, summary, ShieldState.None);
+
+            summary.Clear();
+            GKUtils.ShowGroupInfo(null, null);
+            GEDCOMGroupRecord grpRec = fContext.Tree.XRefIndex_Find("G1") as GEDCOMGroupRecord;
+            GKUtils.ShowGroupInfo(grpRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowMultimediaInfo(null, null);
+            GEDCOMMultimediaRecord mmRec = fContext.Tree.XRefIndex_Find("O1") as GEDCOMMultimediaRecord;
+            GKUtils.ShowMultimediaInfo(mmRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowNoteInfo(null, null);
+            GEDCOMNoteRecord noteRec = fContext.Tree.XRefIndex_Find("N1") as GEDCOMNoteRecord;
+            GKUtils.ShowNoteInfo(noteRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowPersonInfo(null, null, ShieldState.None);
+            GEDCOMIndividualRecord indRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
+            GKUtils.ShowPersonInfo(indRec, summary, ShieldState.None);
+
+            summary.Clear();
+            GKUtils.ShowSourceInfo(null, null);
+            GEDCOMSourceRecord srcRec = fContext.Tree.XRefIndex_Find("S1") as GEDCOMSourceRecord;
+            GKUtils.ShowSourceInfo(srcRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowRepositoryInfo(null, null);
+            GEDCOMRepositoryRecord repRec = fContext.Tree.XRefIndex_Find("R1") as GEDCOMRepositoryRecord;
+            GKUtils.ShowRepositoryInfo(repRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowResearchInfo(null, null);
+            GEDCOMResearchRecord resRec = fContext.Tree.XRefIndex_Find("RS1") as GEDCOMResearchRecord;
+            GKUtils.ShowResearchInfo(resRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowTaskInfo(null, null);
+            GEDCOMTaskRecord taskRec = fContext.Tree.XRefIndex_Find("TK1") as GEDCOMTaskRecord;
+            GKUtils.ShowTaskInfo(taskRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowCommunicationInfo(null, null);
+            GEDCOMCommunicationRecord commRec = fContext.Tree.XRefIndex_Find("CM1") as GEDCOMCommunicationRecord;
+            GKUtils.ShowCommunicationInfo(commRec, summary);
+
+            summary.Clear();
+            GKUtils.ShowLocationInfo(null, null);
+            GEDCOMLocationRecord locRec = fContext.Tree.XRefIndex_Find("L1") as GEDCOMLocationRecord;
+            GKUtils.ShowLocationInfo(locRec, summary);
+        }
+
+        private void EWriter_Test(CustomWriter writer)
+        {
+        }
+
+        [Test]
+        public void Export_Tests()
+        {
+            BaseWindowMock baseWin = new BaseWindowMock();
+
+            using (HTMLWriter writer = new HTMLWriter()) {
+                EWriter_Test(writer);
+            }
+
+            using (RTFWriter writer = new RTFWriter()) {
+                EWriter_Test(writer);
+            }
+
+            /*using (PDFWriter writer = new PDFWriter()) {
+                // TravisCI crash
+            }*/
+
+            Assert.Throws(typeof(ArgumentNullException), () => { new PedigreeExporter(null); });
+
+            using (PedigreeExporter exporter = new PedigreeExporter(baseWin)) {
+                exporter.Options = GlobalOptions.Instance;
+                Assert.IsNotNull(exporter.Options);
+
+                GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I1") as GEDCOMIndividualRecord;
+
+                exporter.Root = iRec;
+                Assert.AreEqual(iRec, exporter.Root);
+
+                exporter.ShieldState = ShieldState.None;
+                Assert.AreEqual(ShieldState.None, exporter.ShieldState);
+
+                exporter.Options.PedigreeOptions.IncludeAttributes = true;
+                exporter.Options.PedigreeOptions.IncludeNotes = true;
+                exporter.Options.PedigreeOptions.IncludeSources = true;
+                exporter.Options.PedigreeOptions.IncludeGenerations = true;
+
+                exporter.Kind = PedigreeExporter.PedigreeKind.pkDescend_Konovalov;
+                Assert.AreEqual(PedigreeExporter.PedigreeKind.pkDescend_Konovalov, exporter.Kind);
+
+                exporter.Options.PedigreeOptions.Format = PedigreeFormat.Excess;
+                Assert.IsTrue(exporter.Generate(new MockWriter()));
+
+                exporter.Options.PedigreeOptions.Format = PedigreeFormat.Compact;
+                Assert.IsTrue(exporter.Generate(new MockWriter()));
+
+
+                exporter.Kind = PedigreeExporter.PedigreeKind.pkDescend_dAboville;
+                exporter.Options.PedigreeOptions.Format = PedigreeFormat.Excess;
+                Assert.IsTrue(exporter.Generate(new MockWriter()));
+
+
+                exporter.Kind = PedigreeExporter.PedigreeKind.pkAscend;
+                exporter.Options.PedigreeOptions.Format = PedigreeFormat.Excess;
+                Assert.IsTrue(exporter.Generate(new MockWriter()));
+            }
+
+            Assert.Throws(typeof(ArgumentNullException), () => { new ExcelExporter(null); });
+
+            using (ExcelExporter exporter = new ExcelExporter(baseWin)) {
+
+            }
+
+            Assert.Throws(typeof(ArgumentNullException), () => { new FamilyBookExporter(null); });
+
+            using (FamilyBookExporter exporter = new FamilyBookExporter(baseWin)) {
+
+            }
+        }
+
+        [Test]
+        public void LuaScripts_Tests()
+        {
+            using (ScriptEngine script = new ScriptEngine()) {
+                script.lua_run("gk_print(\"Hello\")", null, null);
+            }
+        }
+
+        [Test]
+        public void LangMan_Tests()
+        {
+            LangManager langMan = new LangManager();
+            Assert.IsNotNull(langMan);
+
+            Assert.AreEqual("?", langMan.LS(LSID.LSID_First));
+        }
+
+        [Test]
+        public void ExtendedWomanSurnames_Tests()
+        {
+            // Anna Jones
+            GEDCOMIndividualRecord iRec = fContext.Tree.XRefIndex_Find("I5") as GEDCOMIndividualRecord;
+
+            GlobalOptions.Instance.WomanSurnameFormat = WomanSurnameFormat.wsfNotExtend;
+            Assert.AreEqual("Jones Anna", GKUtils.GetNameString(iRec, true, false));
+
+            GKUtils.SetMarriedSurname(iRec, "Smith");
+
+            GlobalOptions.Instance.WomanSurnameFormat = WomanSurnameFormat.wsfMaiden;
+            Assert.AreEqual("Jones Anna", GKUtils.GetNameString(iRec, true, false));
+
+            GlobalOptions.Instance.WomanSurnameFormat = WomanSurnameFormat.wsfMarried;
+            Assert.AreEqual("Smith Anna", GKUtils.GetNameString(iRec, true, false));
+
+            GlobalOptions.Instance.WomanSurnameFormat = WomanSurnameFormat.wsfMaiden_Married;
+            Assert.AreEqual("Jones (Smith) Anna", GKUtils.GetNameString(iRec, true, false));
+
+            GlobalOptions.Instance.WomanSurnameFormat = WomanSurnameFormat.wsfMarried_Maiden;
+            Assert.AreEqual("Smith (Jones) Anna", GKUtils.GetNameString(iRec, true, false));
+
+            GlobalOptions.Instance.WomanSurnameFormat = WomanSurnameFormat.wsfNotExtend;
+        }
+
+        [Test]
+        public void Geocoding_Tests()
+        {
+            IGeocoder geocoder = IGeocoder.Create("");
+            IList<GeoPoint> geoPoints;
+
+            geocoder.SetKey("");
+            geocoder.SetProxy(null);
+            geocoder.SetLang("");
+
+            try {
+                geocoder = IGeocoder.Create("Google");
+                geocoder.SetKey(GKData.GAPI_KEY);
+                geoPoints = geocoder.Geocode("New York", 1);
+                //Assert.IsTrue(geoPoints.Count > 0);
+
+                geocoder = IGeocoder.Create("Yandex");
+                geoPoints = geocoder.Geocode("New York", 1);
+                //Assert.IsTrue(geoPoints.Count > 0);
+            } catch (Exception ex) {
+                Assert.Fail();
+            }
+        }
+
+        [Test]
+        public void PortraitsCache_Tests()
+        {
+            PortraitsCache cache = PortraitsCache.Instance;
+            Assert.IsNull(cache.GetImage(null, null));
+            cache.RemoveObsolete(null);
         }
     }
 }

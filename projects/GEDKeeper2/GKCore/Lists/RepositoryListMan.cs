@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using GKCommon.GEDCOM;
 using GKCore.Interfaces;
 using GKCore.Types;
@@ -30,8 +29,8 @@ namespace GKCore.Lists
     /// </summary>
     public enum RepositoryColumnType
     {
-        rctName,
-        rctChangeDate
+        ctName,
+        ctChangeDate
     }
 
     /// <summary>
@@ -41,13 +40,8 @@ namespace GKCore.Lists
     {
         protected override void InitColumnStatics()
         {
-            this.AddStatic(LSID.LSID_Repository, DataType.dtString, 400, true);
-            this.AddStatic(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
-        }
-
-        public RepositoryListColumns() : base()
-        {
-            InitData(typeof(RepositoryColumnType));
+            AddColumn(LSID.LSID_Repository, DataType.dtString, 400, true);
+            AddColumn(LSID.LSID_Changed, DataType.dtDateTime, 150, true);
         }
     }
 
@@ -58,34 +52,38 @@ namespace GKCore.Lists
     {
         private GEDCOMRepositoryRecord fRec;
 
+        public RepositoryListMan(GEDCOMTree tree) : base(tree, new RepositoryListColumns())
+        {
+        }
+
         public override bool CheckFilter(ShieldState shieldState)
         {
-            bool res = (this.QuickFilter == "*" || IsMatchesMask(this.fRec.RepositoryName, this.QuickFilter));
+            bool res = (QuickFilter == "*" || IsMatchesMask(fRec.RepositoryName, QuickFilter));
 
-            res = res && base.CheckCommonFilter();
+            res = res && CheckCommonFilter();
 
             return res;
         }
 
         public override void Fetch(GEDCOMRecord aRec)
         {
-            this.fRec = (aRec as GEDCOMRepositoryRecord);
+            fRec = (aRec as GEDCOMRepositoryRecord);
         }
 
         protected override object GetColumnValueEx(int colType, int colSubtype, bool isVisible)
         {
-            switch (colType) {
-                case 0:
-                    return this.fRec.RepositoryName;
-                case 1:
-                    return this.fRec.ChangeDate.ChangeDateTime;
-                default:
-                    return null;
-            }
-        }
+            object result = null;
+            switch ((RepositoryColumnType)colType)
+            {
+                case RepositoryColumnType.ctName:
+                    result = fRec.RepositoryName;
+                    break;
 
-        public RepositoryListMan(GEDCOMTree tree) : base(tree, new RepositoryListColumns())
-        {
+                case RepositoryColumnType.ctChangeDate:
+                    result = fRec.ChangeDate.ChangeDateTime;
+                    break;
+            }
+            return result;
         }
     }
 }

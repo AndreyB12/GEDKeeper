@@ -1,6 +1,6 @@
 ﻿/*
  *  "GEDKeeper", the personal genealogical database editor.
- *  Copyright (C) 2009-2016 by Serg V. Zhdanovskih (aka Alchemist, aka Norseman).
+ *  Copyright (C) 2009-2017 by Sergey V. Zhdanovskih.
  *
  *  This file is part of "GEDKeeper".
  *
@@ -23,14 +23,15 @@ using System.Reflection;
 using System.Resources;
 using System.Runtime.InteropServices;
 
+using GKCommon;
 using GKCore.Interfaces;
 
 [assembly: AssemblyTitle("GKImageViewerPlugin")]
-[assembly: AssemblyDescription("GEDKeeper2 ImageViewer plugin")]
+[assembly: AssemblyDescription("GEDKeeper ImageViewer plugin")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GEDKeeper2")]
-[assembly: AssemblyCopyright("Copyright © 2015, Serg V. Zhdanovskih")]
+[assembly: AssemblyProduct("GEDKeeper")]
+[assembly: AssemblyCopyright("Copyright © 2015 by Sergey V. Zhdanovskih")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(false)]
@@ -48,22 +49,33 @@ namespace GKImageViewerPlugin
         LSID_FileLoad
     }
 
-    public class Plugin : IPlugin
+    public class Plugin : BaseObject, IPlugin
     {
         private string fDisplayName = "ImageViewer";
         private IHost fHost;
         private ILangMan fLangMan;
 
-        public string DisplayName { get { return this.fDisplayName; } }
+        public string DisplayName { get { return fDisplayName; } }
         public IHost Host { get { return fHost; } }
         public ILangMan LangMan { get { return fLangMan; } }
+
+        internal ImageViewerWin fForm;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (fForm != null) fForm.Dispose();
+            }
+            base.Dispose(disposing);
+        }
 
         public void Execute()
         {
             try
             {
-                ImageViewerWin frm = new ImageViewerWin(this);
-                this.fHost.ShowMDI(frm);
+                fForm = new ImageViewerWin(this);
+                fHost.ShowMDI(fForm);
             }
             catch (Exception ex)
             {
@@ -79,22 +91,23 @@ namespace GKImageViewerPlugin
         {
             try
             {
-                this.fLangMan = this.fHost.CreateLangMan(this);
-                this.fDisplayName = this.fLangMan.LS(IVLS.LSID_ImgViewer);
+                fLangMan = fHost.CreateLangMan(this);
+                fDisplayName = fLangMan.LS(IVLS.LSID_ImgViewer);
+
+                if (fForm != null) fForm.SetLang();
             }
             catch (Exception ex)
             {
                 fHost.LogWrite("GKImageViewerPlugin.OnLanguageChange(): " + ex.Message);
             }
         }
-        
+
         public bool Startup(IHost host)
         {
             bool result = true;
             try
             {
-                this.fHost = host;
-                // Implement any startup code here
+                fHost = host;
             }
             catch (Exception ex)
             {
@@ -109,7 +122,6 @@ namespace GKImageViewerPlugin
             bool result = true;
             try
             {
-                // Implement any shutdown code here
             }
             catch (Exception ex)
             {
